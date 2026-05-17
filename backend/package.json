@@ -1,0 +1,55 @@
+{
+  "name": "backend",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "format": "prettier --write \"**/*.js\"",
+    "start": "babel-node index.js",
+    "prestart:dev": "bash -lc 'PORT_TO_KILL=${PORT:-3501}; fuser -k \"${PORT_TO_KILL}/tcp\" 2>/dev/null || true'",
+    "start:dev": "nodemon",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json"
+  },
+  "dependencies": {
+    "@alicloud/alimt20181012": "^1.4.2",
+    "@alicloud/openapi-client": "^0.4.15",
+    "@alicloud/tea-util": "^1.4.11",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "^11.0.1",
+    "bcrypt": "^6.0.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.16.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "7.28.4",
+    "@babel/node": "7.28.0",
+    "@babel/plugin-proposal-decorators": "7.28.0",
+    "@babel/plugin-transform-runtime": "7.28.3",
+    "@babel/preset-env": "7.28.3",
+    "@babel/register": "7.28.3",
+    "@babel/runtime": "7.28.4",
+    "@nestjs/testing": "^11.0.1",
+    "jest": "30.2.0",
+    "nodemon": "3.1.10",
+    "prettier": "3.6.2",
+    "supertest": "7.1.4"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json"
+    ],
+    "rootDir": "src",
+    "testRegex": ".spec.js$",
+    "coverageDirectory": "../coverage"
+  }
+}

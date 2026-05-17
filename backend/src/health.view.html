@@ -1,0 +1,3573 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>health</title>
+  <style>
+    body { font-family: Arial, "Segoe UI", sans-serif; padding: 24px; }
+    .status { font-size: 18px; margin-bottom: 12px; }
+    .ok { color: #1a7f37; }
+    .bad { color: #b42318; }
+    .check { margin: 6px 0; }
+    .card { border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px; margin-top: 12px; }
+    .row { margin: 8px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    input, select, textarea { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+    button { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
+    button:hover { background: #f3f4f6; }
+    label { font-size: 12px; color: #374151; display: flex; align-items: center; gap: 4px; }
+    pre { background: #f6f8fa; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+    .note { color: #6b7280; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    textarea { min-height: 96px; width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <div id="auth-overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+    <div style="background: #fff; padding: 20px; border-radius: 10px; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+      <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">调试认证</div>
+      <div style="display: grid; gap: 8px;">
+        <input id="auth-username" placeholder="账号" />
+        <input id="auth-password" type="password" placeholder="密码" />
+        <button id="auth-submit">进入</button>
+        <div id="auth-error" class="note" style="color: #b42318; display: none;">账号或密码错误</div>
+      </div>
+    </div>
+  </div>
+  <div id="app" style="display: none;">
+    <div id="status-label" class="status"></div>
+    <div id="health-checks"></div>
+
+  <div class="card">
+    <div><strong id="title-req"></strong></div>
+    <div class="grid">
+      <div><strong id="req-health"></strong></div>
+      <pre id="req-health-body"></pre>
+      <div><strong id="req-health-view"></strong></div>
+      <pre id="req-health-view-body"></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-debug"></strong></div>
+    <div class="row">
+      <input id="dbg-username" />
+      <input id="dbg-password" type="password" />
+      <button id="btn-login"></button>
+      <button id="btn-user-list"></button>
+    </div>
+    <div class="note" id="note-debug"></div>
+    <pre id="debug-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-file"></strong></div>
+    <div class="row">
+      <input id="file-site-id" />
+      <input id="file-elementor-id" />
+      <input id="file-component-id" />
+      <input id="file-input" type="file" />
+      <button id="btn-file-upload"></button>
+      <button id="btn-file-query"></button>
+    </div>
+    <div class="note" id="note-file"></div>
+    <pre id="file-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-media-config"></strong></div>
+    <div class="row">
+      <input id="media-id" />
+      <input id="media-demo" />
+      <input id="media-page" />
+      <input id="media-list-page" />
+      <input id="media-list-page-size" />
+      <input id="media-url" />
+      <input id="media-file" type="file" />
+    </div>
+    <div class="row">
+      <button id="btn-media-save-json"></button>
+      <button id="btn-media-save-file"></button>
+      <button id="btn-media-get"></button>
+    </div>
+    <div class="row">
+      <input id="media-delete-id" />
+      <button id="btn-media-delete"></button>
+    </div>
+    <div class="row">
+      <input id="page-config-site-id" />
+      <input id="page-config-page-id" />
+      <button id="btn-page-config-get"></button>
+    </div>
+    <div class="row">
+      <textarea id="page-config-materials"></textarea>
+    </div>
+    <div class="row">
+      <button id="btn-page-config-save-materials"></button>
+    </div>
+    <div class="row">
+      <textarea id="page-config-sizes"></textarea>
+    </div>
+    <div class="row">
+      <button id="btn-page-config-save-sizes"></button>
+    </div>
+    <div class="note" id="note-media-config"></div>
+    <pre id="media-config-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-user"></strong></div>
+    <div class="row">
+      <input id="user-id" />
+      <input id="user-username" />
+      <input id="user-password" type="password" />
+      <input id="user-role" />
+      <input id="user-site-ids" />
+    </div>
+    <div class="row">
+      <input id="user-page-site-id" />
+      <input id="user-page-id" />
+      <select id="user-page-allow">
+        <option value="true"></option>
+        <option value="false"></option>
+      </select>
+      <input id="user-page-clear-ids" />
+    </div>
+    <div class="row">
+      <button id="btn-user-add"></button>
+      <button id="btn-user-update"></button>
+      <button id="btn-user-revoke"></button>
+      <button id="btn-user-delete"></button>
+      <button id="btn-user-detail"></button>
+      <button id="btn-user-reset"></button>
+      <button id="btn-user-deleted"></button>
+      <button id="btn-user-restore"></button>
+      <button id="btn-user-page-set"></button>
+      <button id="btn-user-page-list"></button>
+      <button id="btn-user-page-clear"></button>
+    </div>
+    <div class="note" id="note-user"></div>
+    <pre id="user-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-site"></strong></div>
+    <div class="row">
+      <input id="site-id" />
+      <input id="site-name" />
+      <input id="site-url" />
+      <input id="site-demo" />
+      <select id="site-status">
+        <option value=""></option>
+        <option value="0"></option>
+        <option value="1"></option>
+      </select>
+      <button id="btn-site-create"></button>
+      <button id="btn-site-update"></button>
+    </div>
+    <div class="row">
+      <input id="site-token" />
+      <button id="btn-site-bind"></button>
+      <button id="btn-site-rebind"></button>
+      <button id="btn-site-delete"></button>
+    </div>
+    <div class="row"><strong id="title-site-list"></strong></div>
+    <div class="row">
+      <input id="site-keyword" />
+      <input id="site-filter-demo" />
+      <select id="site-filter-status">
+        <option value=""></option>
+        <option value="0"></option>
+        <option value="1"></option>
+      </select>
+      <label><input id="site-include-deleted" type="checkbox" /><span id="site-include-label"></span></label>
+      <button id="btn-site-list"></button>
+      <button id="btn-site-reset"></button>
+    </div>
+    <div class="note" id="note-site"></div>
+    <pre id="site-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-proxy"></strong></div>
+    <div class="row">
+      <input id="proxy-site-id" />
+      <input id="proxy-page-id" />
+      <button id="btn-proxy-pages"></button>
+      <button id="btn-proxy-elementor"></button>
+      <button id="btn-proxy-elementor-json"></button>
+      <button id="btn-proxy-elementor-eltype"></button>
+    </div>
+    <div class="row">
+      <input id="proxy-data" />
+      <input id="proxy-file" type="file" />
+      <button id="btn-proxy-update"></button>
+      <button id="btn-proxy-upload"></button>
+    </div>
+    <div class="row">
+      <input id="proxy-media-page" />
+      <input id="proxy-media-page-size" />
+      <button id="btn-proxy-media-list"></button>
+      <input id="proxy-media-id" />
+      <button id="btn-proxy-media-delete"></button>
+    </div>
+    <div class="note" id="note-proxy"></div>
+    <pre id="proxy-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-wp-basic"></strong></div>
+    <div class="row">
+      <input id="wp-site-id" />
+      <input id="wp-site-title" />
+      <button id="btn-wp-title"></button>
+      <button id="btn-wp-title-get"></button>
+    </div>
+    <div class="row">
+      <input id="wp-site-icon-id" />
+      <input id="wp-site-icon-file" type="file" />
+      <button id="btn-wp-icon"></button>
+      <button id="btn-wp-icon-get"></button>
+    </div>
+    <div class="note" id="note-wp-basic"></div>
+    <pre id="wp-basic-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-wp-smtp"></strong></div>
+    <div class="row">
+      <input id="smtp-site-id" />
+      <input id="smtp-from-email" />
+      <input id="smtp-from-name" />
+      <select id="smtp-mailer">
+        <option value="other_smtp"></option>
+        <option value="smtp"></option>
+      </select>
+      <input id="smtp-host" />
+      <select id="smtp-encryption">
+        <option value=""></option>
+        <option value="none"></option>
+        <option value="ssl"></option>
+        <option value="tls"></option>
+      </select>
+      <input id="smtp-port" />
+    </div>
+    <div class="row">
+      <select id="smtp-auto-tls">
+        <option value="true"></option>
+        <option value="false"></option>
+      </select>
+      <select id="smtp-auth">
+        <option value="true"></option>
+        <option value="false"></option>
+      </select>
+      <input id="smtp-user" />
+      <input id="smtp-pass" type="password" />
+      <button id="btn-smtp-save"></button>
+    </div>
+    <div class="row">
+      <input id="smtp-test-to" />
+      <button id="btn-smtp-test"></button>
+    </div>
+    <div class="note" id="note-wp-smtp"></div>
+    <pre id="wp-smtp-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-wp-content"></strong></div>
+    <div><strong id="title-product-crud"></strong></div>
+    <div class="row">
+      <input id="proxy-product-site-id" />
+      <input id="proxy-product-id" />
+      <input id="proxy-product-title" />
+      <input id="proxy-product-short-description" />
+      <input id="proxy-product-category-ids" />
+      <button id="btn-proxy-product-create"></button>
+      <button id="btn-proxy-product-get"></button>
+      <button id="btn-proxy-product-update"></button>
+      <button id="btn-proxy-product-delete"></button>
+      <button id="btn-proxy-short-desc-get"></button>
+      <button id="btn-proxy-short-desc-update"></button>
+    </div>
+    <div class="row">
+      <input id="proxy-product-content-body" />
+      <input id="proxy-product-image-id" />
+      <input id="proxy-product-gallery-ids" />
+      <input id="proxy-product-list-page" />
+      <input id="proxy-product-list-page-size" />
+      <input id="proxy-product-list-keyword" />
+      <input id="proxy-product-list-status" />
+      <button id="btn-proxy-product-list"></button>
+      <button id="btn-proxy-product-categories-get"></button>
+    </div>
+    <div class="row">
+      <input id="proxy-product-category-id" />
+      <input id="proxy-product-category-name" />
+      <input id="proxy-product-category-slug" />
+      <input id="proxy-product-category-parent" />
+      <input id="proxy-product-category-description" />
+      <button id="btn-proxy-product-category-update"></button>
+    </div>
+    <div><strong id="title-news-crud"></strong></div>
+    <div class="row">
+      <input id="proxy-news-site-id" />
+      <input id="proxy-news-id" />
+      <input id="proxy-news-title" />
+      <input id="proxy-news-excerpt" />
+      <input id="proxy-news-category-ids" />
+      <button id="btn-proxy-news-create"></button>
+      <button id="btn-proxy-news-get"></button>
+      <button id="btn-proxy-news-update"></button>
+      <button id="btn-proxy-news-delete"></button>
+    </div>
+    <div class="row">
+      <input id="proxy-news-content-body" />
+      <input id="proxy-news-featured-image-id" />
+      <input id="proxy-news-list-page" />
+      <input id="proxy-news-list-page-size" />
+      <input id="proxy-news-list-keyword" />
+      <input id="proxy-news-list-status" />
+      <button id="btn-proxy-news-list"></button>
+      <button id="btn-proxy-news-categories-get"></button>
+    </div>
+    <div class="row">
+      <input id="proxy-news-category-id" />
+      <input id="proxy-news-category-name" />
+      <input id="proxy-news-category-slug" />
+      <input id="proxy-news-category-parent" />
+      <input id="proxy-news-category-description" />
+      <button id="btn-proxy-news-category-update"></button>
+    </div>
+    <div class="note" id="note-wp-content"></div>
+    <pre id="wp-content-output"></pre>
+  </div>
+
+  <div class="card">
+    <div><strong id="title-translate"></strong></div>
+    <div class="row">
+      <input id="translate-text" />
+      <input id="translate-source" />
+      <input id="translate-target" />
+      <input id="translate-format" />
+      <select id="translate-mode">
+        <option value="general"></option>
+        <option value="professional"></option>
+      </select>
+      <button id="btn-translate-proxy"></button>
+    </div>
+    <div class="row">
+      <select id="translate-scene">
+        <option value=""></option>
+        <option value="title"></option>
+        <option value="description"></option>
+        <option value="communication"></option>
+        <option value="medical"></option>
+        <option value="social"></option>
+        <option value="finance"></option>
+      </select>
+      <input id="translate-context" />
+    </div>
+    <div class="note" id="note-translate"></div>
+    <pre id="translate-output"></pre>
+  </div>
+
+    <h3 id="title-raw"></h3>
+    <pre id="raw-output"></pre>
+  </div>
+
+  <script>
+    (function () {
+      let accessToken = '';
+      const output = document.getElementById('debug-output');
+      const rawOutput = document.getElementById('raw-output');
+      const statusLabel = document.getElementById('status-label');
+      const checksBox = document.getElementById('health-checks');
+      const authOverlay = document.getElementById('auth-overlay');
+      const appBox = document.getElementById('app');
+      const authUsernameEl = document.getElementById('auth-username');
+      const authPasswordEl = document.getElementById('auth-password');
+      const authSubmitBtn = document.getElementById('auth-submit');
+      const authErrorEl = document.getElementById('auth-error');
+      const usernameEl = document.getElementById('dbg-username');
+      const passwordEl = document.getElementById('dbg-password');
+      const loginBtn = document.getElementById('btn-login');
+      const listBtn = document.getElementById('btn-user-list');
+      const fileUploadBtn = document.getElementById('btn-file-upload');
+      const fileQueryBtn = document.getElementById('btn-file-query');
+      const fileSiteIdEl = document.getElementById('file-site-id');
+      const fileElementorIdEl = document.getElementById('file-elementor-id');
+      const fileComponentIdEl = document.getElementById('file-component-id');
+      const fileInputEl = document.getElementById('file-input');
+      const fileOutput = document.getElementById('file-output');
+      const mediaIdEl = document.getElementById('media-id');
+      const mediaDemoEl = document.getElementById('media-demo');
+      const mediaPageEl = document.getElementById('media-page');
+      const mediaListPageEl = document.getElementById('media-list-page');
+      const mediaListPageSizeEl = document.getElementById(
+        'media-list-page-size',
+      );
+      const mediaUrlEl = document.getElementById('media-url');
+      const mediaFileEl = document.getElementById('media-file');
+      const mediaSaveJsonBtn = document.getElementById('btn-media-save-json');
+      const mediaSaveFileBtn = document.getElementById('btn-media-save-file');
+      const mediaGetBtn = document.getElementById('btn-media-get');
+      const mediaDeleteIdEl = document.getElementById('media-delete-id');
+      const mediaDeleteBtn = document.getElementById('btn-media-delete');
+      const pageConfigSiteIdEl = document.getElementById('page-config-site-id');
+      const pageConfigPageIdEl = document.getElementById('page-config-page-id');
+      const pageConfigMaterialsEl = document.getElementById('page-config-materials');
+      const pageConfigSizesEl = document.getElementById('page-config-sizes');
+      const pageConfigSaveMaterialsBtn = document.getElementById('btn-page-config-save-materials');
+      const pageConfigSaveSizesBtn = document.getElementById('btn-page-config-save-sizes');
+      const pageConfigGetBtn = document.getElementById('btn-page-config-get');
+      const mediaConfigOutput = document.getElementById('media-config-output');
+      const userIdEl = document.getElementById('user-id');
+      const userUsernameEl = document.getElementById('user-username');
+      const userPasswordEl = document.getElementById('user-password');
+      const userRoleEl = document.getElementById('user-role');
+      const userSiteIdsEl = document.getElementById('user-site-ids');
+      const userPageSiteIdEl = document.getElementById('user-page-site-id');
+      const userPageIdEl = document.getElementById('user-page-id');
+      const userPageAllowEl = document.getElementById('user-page-allow');
+      const userPageClearIdsEl = document.getElementById('user-page-clear-ids');
+      const userAddBtn = document.getElementById('btn-user-add');
+      const userUpdateBtn = document.getElementById('btn-user-update');
+      const userRevokeBtn = document.getElementById('btn-user-revoke');
+      const userDeleteBtn = document.getElementById('btn-user-delete');
+      const userDetailBtn = document.getElementById('btn-user-detail');
+      const userResetBtn = document.getElementById('btn-user-reset');
+      const userDeletedBtn = document.getElementById('btn-user-deleted');
+      const userRestoreBtn = document.getElementById('btn-user-restore');
+      const userPageSetBtn = document.getElementById('btn-user-page-set');
+      const userPageListBtn = document.getElementById('btn-user-page-list');
+      const userPageClearBtn = document.getElementById('btn-user-page-clear');
+      const userOutput = document.getElementById('user-output');
+      const siteIdEl = document.getElementById('site-id');
+      const siteNameEl = document.getElementById('site-name');
+      const siteDemoEl = document.getElementById('site-demo');
+      const siteStatusEl = document.getElementById('site-status');
+      const siteTokenEl = document.getElementById('site-token');
+      const siteUrlEl = document.getElementById('site-url');
+      const siteKeywordEl = document.getElementById('site-keyword');
+      const siteFilterDemoEl = document.getElementById('site-filter-demo');
+      const siteFilterStatusEl = document.getElementById('site-filter-status');
+      const siteIncludeDeletedEl = document.getElementById('site-include-deleted');
+      const siteCreateBtn = document.getElementById('btn-site-create');
+      const siteUpdateBtn = document.getElementById('btn-site-update');
+      const siteBindBtn = document.getElementById('btn-site-bind');
+      const siteRebindBtn = document.getElementById('btn-site-rebind');
+      const siteDeleteBtn = document.getElementById('btn-site-delete');
+      const siteListBtn = document.getElementById('btn-site-list');
+      const siteResetBtn = document.getElementById('btn-site-reset');
+      const siteOutput = document.getElementById('site-output');
+      const proxySiteIdEl = document.getElementById('proxy-site-id');
+      const proxyPageIdEl = document.getElementById('proxy-page-id');
+      const proxyDataEl = document.getElementById('proxy-data');
+      const proxyFileEl = document.getElementById('proxy-file');
+      const proxyPagesBtn = document.getElementById('btn-proxy-pages');
+      const proxyElementorBtn = document.getElementById('btn-proxy-elementor');
+      const proxyElementorJsonBtn = document.getElementById('btn-proxy-elementor-json');
+      const proxyElementorEltypeBtn = document.getElementById('btn-proxy-elementor-eltype');
+      const proxyUpdateBtn = document.getElementById('btn-proxy-update');
+      const proxyUploadBtn = document.getElementById('btn-proxy-upload');
+      const proxyMediaPageEl = document.getElementById('proxy-media-page');
+      const proxyMediaPageSizeEl = document.getElementById('proxy-media-page-size');
+      const proxyMediaIdEl = document.getElementById('proxy-media-id');
+      const proxyMediaListBtn = document.getElementById('btn-proxy-media-list');
+      const proxyMediaDeleteBtn = document.getElementById('btn-proxy-media-delete');
+      const proxyProductSiteIdEl = document.getElementById('proxy-product-site-id');
+      const proxyProductIdEl = document.getElementById('proxy-product-id');
+      const proxyProductTitleEl = document.getElementById('proxy-product-title');
+      const proxyProductContentBodyEl = document.getElementById('proxy-product-content-body');
+      const proxyProductShortDescriptionEl = document.getElementById('proxy-product-short-description');
+      const proxyProductImageIdEl = document.getElementById('proxy-product-image-id');
+      const proxyProductGalleryIdsEl = document.getElementById('proxy-product-gallery-ids');
+      const proxyProductCategoryIdsEl = document.getElementById('proxy-product-category-ids');
+      const proxyProductCategoryIdEl = document.getElementById('proxy-product-category-id');
+      const proxyProductCategoryNameEl = document.getElementById('proxy-product-category-name');
+      const proxyProductCategorySlugEl = document.getElementById('proxy-product-category-slug');
+      const proxyProductCategoryParentEl = document.getElementById('proxy-product-category-parent');
+      const proxyProductCategoryDescriptionEl = document.getElementById('proxy-product-category-description');
+      const proxyProductListPageEl = document.getElementById('proxy-product-list-page');
+      const proxyProductListPageSizeEl = document.getElementById('proxy-product-list-page-size');
+      const proxyProductListKeywordEl = document.getElementById('proxy-product-list-keyword');
+      const proxyProductListStatusEl = document.getElementById('proxy-product-list-status');
+      const proxyNewsSiteIdEl = document.getElementById('proxy-news-site-id');
+      const proxyNewsIdEl = document.getElementById('proxy-news-id');
+      const proxyNewsTitleEl = document.getElementById('proxy-news-title');
+      const proxyNewsExcerptEl = document.getElementById('proxy-news-excerpt');
+      const proxyNewsContentBodyEl = document.getElementById('proxy-news-content-body');
+      const proxyNewsFeaturedImageIdEl = document.getElementById('proxy-news-featured-image-id');
+      const proxyNewsCategoryIdsEl = document.getElementById('proxy-news-category-ids');
+      const proxyNewsCategoryIdEl = document.getElementById('proxy-news-category-id');
+      const proxyNewsCategoryNameEl = document.getElementById('proxy-news-category-name');
+      const proxyNewsCategorySlugEl = document.getElementById('proxy-news-category-slug');
+      const proxyNewsCategoryParentEl = document.getElementById('proxy-news-category-parent');
+      const proxyNewsCategoryDescriptionEl = document.getElementById('proxy-news-category-description');
+      const proxyNewsListPageEl = document.getElementById('proxy-news-list-page');
+      const proxyNewsListPageSizeEl = document.getElementById('proxy-news-list-page-size');
+      const proxyNewsListKeywordEl = document.getElementById('proxy-news-list-keyword');
+      const proxyNewsListStatusEl = document.getElementById('proxy-news-list-status');
+      const proxyProductCreateBtn = document.getElementById('btn-proxy-product-create');
+      const proxyProductGetBtn = document.getElementById('btn-proxy-product-get');
+      const proxyProductListBtn = document.getElementById('btn-proxy-product-list');
+      const proxyProductUpdateBtn = document.getElementById('btn-proxy-product-update');
+      const proxyProductDeleteBtn = document.getElementById('btn-proxy-product-delete');
+      const proxyProductCategoriesGetBtn = document.getElementById('btn-proxy-product-categories-get');
+      const proxyProductCategoryUpdateBtn = document.getElementById('btn-proxy-product-category-update');
+      const proxyNewsCreateBtn = document.getElementById('btn-proxy-news-create');
+      const proxyNewsGetBtn = document.getElementById('btn-proxy-news-get');
+      const proxyNewsListBtn = document.getElementById('btn-proxy-news-list');
+      const proxyNewsUpdateBtn = document.getElementById('btn-proxy-news-update');
+      const proxyNewsDeleteBtn = document.getElementById('btn-proxy-news-delete');
+      const proxyNewsCategoriesGetBtn = document.getElementById('btn-proxy-news-categories-get');
+      const proxyNewsCategoryUpdateBtn = document.getElementById('btn-proxy-news-category-update');
+      const proxyShortDescGetBtn = document.getElementById('btn-proxy-short-desc-get');
+      const proxyShortDescUpdateBtn = document.getElementById('btn-proxy-short-desc-update');
+      const proxyOutput = document.getElementById('proxy-output');
+      const wpSiteIdEl = document.getElementById('wp-site-id');
+      const wpSiteTitleEl = document.getElementById('wp-site-title');
+      const wpSiteIconIdEl = document.getElementById('wp-site-icon-id');
+      const wpSiteIconFileEl = document.getElementById('wp-site-icon-file');
+      const wpTitleBtn = document.getElementById('btn-wp-title');
+      const wpTitleGetBtn = document.getElementById('btn-wp-title-get');
+      const wpIconBtn = document.getElementById('btn-wp-icon');
+      const wpIconGetBtn = document.getElementById('btn-wp-icon-get');
+      const wpBasicOutput = document.getElementById('wp-basic-output');
+      const smtpSiteIdEl = document.getElementById('smtp-site-id');
+      const smtpFromEmailEl = document.getElementById('smtp-from-email');
+      const smtpFromNameEl = document.getElementById('smtp-from-name');
+      const smtpMailerEl = document.getElementById('smtp-mailer');
+      const smtpHostEl = document.getElementById('smtp-host');
+      const smtpEncryptionEl = document.getElementById('smtp-encryption');
+      const smtpPortEl = document.getElementById('smtp-port');
+      const smtpAutoTlsEl = document.getElementById('smtp-auto-tls');
+      const smtpAuthEl = document.getElementById('smtp-auth');
+      const smtpUserEl = document.getElementById('smtp-user');
+      const smtpPassEl = document.getElementById('smtp-pass');
+      const smtpTestToEl = document.getElementById('smtp-test-to');
+      const smtpSaveBtn = document.getElementById('btn-smtp-save');
+      const smtpTestBtn = document.getElementById('btn-smtp-test');
+      const wpSmtpOutput = document.getElementById('wp-smtp-output');
+      const contentSiteIdEl = document.getElementById('content-site-id');
+      const contentPostTypeEl = document.getElementById('content-post-type');
+      const contentTitleEl = document.getElementById('content-title');
+      const contentPostDateEl = document.getElementById('content-post-date');
+      const contentCategoryIdsEl = document.getElementById('content-category-ids');
+      const contentTagIdsEl = document.getElementById('content-tag-ids');
+      const contentFeaturedIdEl = document.getElementById('content-featured-id');
+      const contentGalleryIdsEl = document.getElementById('content-gallery-ids');
+      const contentBodyEl = document.getElementById('content-body');
+      const postTypesBtn = document.getElementById('btn-post-types');
+      const contentCreateBtn = document.getElementById('btn-content-create');
+      const wpContentOutput = document.getElementById('wp-content-output');
+      const translateTextEl = document.getElementById('translate-text');
+      const translateSourceEl = document.getElementById('translate-source');
+      const translateTargetEl = document.getElementById('translate-target');
+      const translateFormatEl = document.getElementById('translate-format');
+      const translateModeEl = document.getElementById('translate-mode');
+      const translateSceneEl = document.getElementById('translate-scene');
+      const translateContextEl = document.getElementById('translate-context');
+      const translateProxyBtn = document.getElementById('btn-translate-proxy');
+      const translateOutput = document.getElementById('translate-output');
+
+      function setText(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      }
+
+      function setPlaceholder(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.placeholder = text;
+      }
+
+      function formatJson(data) {
+        return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      }
+
+      function buildRequest(method, url, headers, body, extra) {
+        const req = { method, url };
+        if (headers && Object.keys(headers).length) {
+          req.headers = headers;
+        }
+        try {
+          const fullUrl = new URL(url, window.location.origin);
+          const query = {};
+          fullUrl.searchParams.forEach((value, key) => {
+            if (query[key] !== undefined) {
+              if (Array.isArray(query[key])) {
+                query[key].push(value);
+              } else {
+                query[key] = [query[key], value];
+              }
+            } else {
+              query[key] = value;
+            }
+          });
+          if (Object.keys(query).length) {
+            req.query = query;
+          }
+        } catch (error) {
+          // ignore invalid URL
+        }
+        if (extra && extra.params && Object.keys(extra.params).length) {
+          req.params = extra.params;
+        }
+        if (body !== undefined) {
+          req.body = body;
+        }
+        if (extra && extra.form && Object.keys(extra.form).length) {
+          req.form = extra.form;
+        }
+        if (extra && extra.client && Object.keys(extra.client).length) {
+          req.client = extra.client;
+        }
+        return req;
+      }
+
+      function showWithRequest(el, title, req, data) {
+        const reqText = formatJson(req);
+        const resText = formatJson(data);
+        el.textContent = title + '\n' + '请求:\n' + reqText + '\n\n响应:\n' + resText;
+      }
+
+      function setLoadingWithRequest(el, title, req) {
+        const reqText = formatJson(req);
+        el.textContent = title + '\n' + '请求:\n' + reqText + '\n\n响应:\n处理中...';
+      }
+
+      function applyI18n() {
+        document.title = '健康监控';
+        setText('title-req', '请求与响应');
+        setText('req-health', 'GET /health');
+        setText('req-health-view', 'GET /health/view');
+        setText(
+          'req-health-body',
+          '{\n  "code": 0,\n  "data": {\n    "status": "ok",\n    "checks": [\n      { "name": "app", "ok": true, "message": "应用可用" }\n    ]\n  },\n  "message": "服务正常"\n}',
+        );
+        setText('req-health-view-body', '返回本页面（text/html; charset=utf-8）');
+
+        setText('title-debug', '调试');
+        setText('title-file', '文件上传与查询');
+        setText('title-media-config', 'Demo 素材库与页面配置');
+        setText('title-user', '用户与站点授权');
+        setText('title-site', '站点创建与绑定');
+        setText('title-site-list', '站点列表');
+        setText('title-proxy', 'WordPress 代理');
+        setText('title-wp-basic', '站点基础设置');
+        setText('title-wp-smtp', 'SMTP 设置与测试');
+        setText('title-wp-content', '产品/新闻管理');
+        setText('title-translate', '翻译（阿里云）');
+        setText('title-raw', '原始数据');
+        setText('note-debug', '说明：用户列表需管理员账号登录。');
+        setText('note-file', '说明：需要已登录的 access_token。');
+        setText(
+          'note-media-config',
+          '说明：素材库保存仅管理员可写；页面配置按 site_id + page_id 保存，文本框内请填写数组 JSON。',
+        );
+        setText('note-user', '说明：以上操作需要管理员账号。');
+        setText('btn-site-update', '更新站点');
+        setText('btn-site-rebind', '重新绑定');
+        setText('note-site', '说明：创建/更新/删除需管理员账号。');
+        setText('note-proxy', '说明：需已登录且具备站点权限。');
+        setText('note-wp-basic', '说明：站点图标支持上传文件或填写 attachment_id。');
+        setText('note-wp-smtp', '说明：保存后可用下方测试发送。');
+        setText('note-wp-content', '说明：产品和新闻请分别填写各自 site_id。');
+        setText('note-translate', '说明：需要登录并配置翻译服务。');
+        setText('site-include-label', '包含已删除');
+
+        setPlaceholder('dbg-username', '用户名');
+        setPlaceholder('dbg-password', '密码');
+        setText('btn-login', '测试登录');
+        setText('btn-user-list', '测试用户列表');
+
+        setPlaceholder('file-site-id', '站点ID');
+        setPlaceholder('file-elementor-id', '页面ID page_id');
+        setPlaceholder('file-component-id', '组件ID component_id');
+        setText('btn-file-upload', '上传');
+        setText('btn-file-query', '查询');
+
+        setPlaceholder('media-id', '素材ID（可选，更新时填写）');
+        setPlaceholder('media-demo', 'demo');
+        setPlaceholder('media-page', '页面名筛选 page/page_name');
+        setPlaceholder('media-list-page', '列表页码 page（默认 1）');
+        setPlaceholder(
+          'media-list-page-size',
+          '每页 page_size（10/50/100/1000，默认 10）',
+        );
+        setPlaceholder('media-url', '图片 URL（JSON 保存时使用）');
+        setPlaceholder('media-delete-id', '素材ID（删除用）');
+        setText('btn-media-save-json', '保存素材(JSON)');
+        setText('btn-media-save-file', '上传素材(file)');
+        setText('btn-media-get', '查询素材');
+        setText('btn-media-delete', '删除素材');
+        setPlaceholder('page-config-site-id', '站点ID site_id');
+        setPlaceholder('page-config-page-id', '页面ID page_id');
+        setText('btn-page-config-get', '查询页面配置');
+        setText('btn-page-config-save-materials', '保存素材配置');
+        setText('btn-page-config-save-sizes', '保存尺寸配置');
+        if (pageConfigMaterialsEl) {
+          pageConfigMaterialsEl.placeholder =
+            '[\n  {\n    "id": 1,\n    "demo": "demo67",\n    "page": "home",\n    "url": "http://123.png"\n  }\n]';
+        }
+        if (pageConfigSizesEl) {
+          pageConfigSizesEl.placeholder =
+            '[\n  {\n    "module_id": 1,\n    "width": 1200,\n    "height": 800\n  }\n]';
+        }
+
+        setPlaceholder('user-id', '用户ID（可选）');
+        setPlaceholder('user-username', '用户名');
+        setPlaceholder('user-password', '密码（新增/重置）');
+        setPlaceholder('user-role', '角色：admin/user（可选）');
+        setPlaceholder('user-site-ids', '站点授权（逗号分隔）');
+        setPlaceholder('user-page-site-id', '页面授权站点ID');
+        setPlaceholder('user-page-id', '页面ID（page_id）');
+        setPlaceholder('user-page-clear-ids', '清空页面ID列表（逗号分隔，留空=清空站点全部页面规则）');
+        setText('btn-user-add', '新增用户');
+        setText('btn-user-update', '更新用户');
+        setText('btn-user-revoke', '取消授权');
+        setText('btn-user-delete', '删除用户');
+        setText('btn-user-detail', '查询用户');
+        setText('btn-user-reset', '重置');
+        setText('btn-user-deleted', '已删列表');
+        setText('btn-user-restore', '恢复用户');
+        setText('btn-user-page-set', '设置页面授权');
+        setText('btn-user-page-list', '查询页面授权');
+        setText('btn-user-page-clear', '清空页面授权');
+
+        setPlaceholder('site-id', '站点ID（更新/删除用）');
+        setPlaceholder('site-name', '站点名称');
+        setPlaceholder('site-url', '站点URL');
+        setPlaceholder('site-demo', '所属Demo（可选）');
+        setPlaceholder('site-token', '插件对接凭证（旧绑定用）');
+        setPlaceholder('site-keyword', '名称/URL 模糊查询');
+        setPlaceholder('site-filter-demo', '所属Demo筛选');
+        setText('btn-site-create', '创建站点');
+        setText('btn-site-bind', '绑定URL');
+        setText('btn-site-delete', '删除站点');
+        setText('btn-site-list', '查询站点');
+        setText('btn-site-reset', '重置');
+        setPlaceholder('proxy-site-id', '站点ID');
+        setPlaceholder('proxy-page-id', '页面ID');
+        setPlaceholder('proxy-data', 'Elementor JSON 数据');
+        setText('btn-proxy-pages', '获取页面列表');
+        setText('btn-proxy-elementor', '获取Elementor数据');
+        setText('btn-proxy-elementor-json', '获取Elementor JSON');
+        setText('btn-proxy-elementor-eltype', '获取Elementor ElType');
+        setText('btn-proxy-update', '更新Elementor数据');
+        setText('btn-proxy-upload', '上传媒体');
+        setText('btn-proxy-media-list', '媒体列表');
+        setText('btn-proxy-media-delete', '删除媒体');
+        setPlaceholder('proxy-media-page', '页码（默认 1）');
+        setPlaceholder('proxy-media-page-size', '每页（默认 20）');
+        setPlaceholder('proxy-media-id', '媒体ID');
+        setPlaceholder('proxy-product-site-id', '产品站点ID');
+        setPlaceholder('proxy-product-id', '产品ID');
+        setPlaceholder('proxy-product-title', '产品标题（更新用）');
+        setPlaceholder('proxy-product-content-body', '产品正文（更新用）');
+        setPlaceholder('proxy-product-short-description', '产品短描述');
+        setPlaceholder('proxy-product-image-id', '产品封面图 attachment_id');
+        setPlaceholder('proxy-product-gallery-ids', '产品图库 attachment_id 列表（逗号分隔）');
+        setPlaceholder('proxy-product-category-ids', '产品内容分类ID列表（逗号分隔）');
+        setPlaceholder('proxy-product-list-page', '产品列表页码（默认1）');
+        setPlaceholder('proxy-product-list-page-size', '产品列表每页（默认20）');
+        setPlaceholder('proxy-product-list-keyword', '产品列表关键词（可空）');
+        setPlaceholder('proxy-product-list-status', '产品列表状态 publish/draft（可空）');
+        setPlaceholder('proxy-product-category-id', '产品分类项ID（更新分类用）');
+        setPlaceholder('proxy-product-category-name', '产品分类名称');
+        setPlaceholder('proxy-product-category-slug', '产品分类Slug');
+        setPlaceholder('proxy-product-category-parent', '产品分类父ID');
+        setPlaceholder('proxy-product-category-description', '产品分类描述');
+        setPlaceholder('proxy-news-site-id', '新闻站点ID');
+        setPlaceholder('proxy-news-id', '新闻ID');
+        setPlaceholder('proxy-news-title', '新闻标题（更新用）');
+        setPlaceholder('proxy-news-excerpt', '新闻 Excerpt（摘要）');
+        setPlaceholder('proxy-news-content-body', '新闻正文（更新用）');
+        setPlaceholder('proxy-news-featured-image-id', '新闻封面图 attachment_id');
+        setPlaceholder('proxy-news-category-ids', '新闻内容分类ID列表（逗号分隔）');
+        setPlaceholder('proxy-news-list-page', '新闻列表页码（默认1）');
+        setPlaceholder('proxy-news-list-page-size', '新闻列表每页（默认20）');
+        setPlaceholder('proxy-news-list-keyword', '新闻列表关键词（可空）');
+        setPlaceholder('proxy-news-list-status', '新闻列表状态 publish/draft（可空）');
+        setPlaceholder('proxy-news-category-id', '新闻分类项ID（更新分类用）');
+        setPlaceholder('proxy-news-category-name', '新闻分类名称');
+        setPlaceholder('proxy-news-category-slug', '新闻分类Slug');
+        setPlaceholder('proxy-news-category-parent', '新闻分类父ID');
+        setPlaceholder('proxy-news-category-description', '新闻分类描述');
+        setText('btn-wp-title', '更新站点标题');
+        setText('btn-wp-title-get', '获取站点标题');
+        setText('btn-wp-icon', '设置站点图标');
+        setText('btn-wp-icon-get', '获取站点图标');
+        setText('title-product-crud', '产品');
+        setText('title-news-crud', '新闻');
+        setText('btn-proxy-product-create', '新增产品');
+        setText('btn-proxy-product-get', '获取产品');
+        setText('btn-proxy-product-list', '产品列表');
+        setText('btn-proxy-product-update', '更新产品');
+        setText('btn-proxy-product-delete', '删除产品');
+        setText('btn-proxy-product-categories-get', '产品分类列表');
+        setText('btn-proxy-product-category-update', '更新产品分类');
+        setText('btn-proxy-news-create', '新增新闻');
+        setText('btn-proxy-news-get', '获取新闻');
+        setText('btn-proxy-news-list', '新闻列表');
+        setText('btn-proxy-news-update', '更新新闻');
+        setText('btn-proxy-news-delete', '删除新闻');
+        setText('btn-proxy-news-categories-get', '新闻分类列表');
+        setText('btn-proxy-news-category-update', '更新新闻分类');
+        setText('btn-proxy-short-desc-get', '获取产品短描述');
+        setText('btn-proxy-short-desc-update', '更新产品短描述');
+        setText('btn-smtp-save', '保存 SMTP');
+        setText('btn-smtp-test', '发送测试邮件');
+        setText('btn-post-types', '获取 post_types');
+        setText('btn-content-create', '发布内容');
+        setPlaceholder('wp-site-id', '站点ID');
+        setPlaceholder('wp-site-title', '网站标题');
+        setPlaceholder('wp-site-icon-id', 'attachment_id（可选）');
+        setPlaceholder('smtp-site-id', '站点ID');
+        setPlaceholder('smtp-from-email', 'From Email');
+        setPlaceholder('smtp-from-name', 'From Name');
+        setPlaceholder('smtp-host', 'SMTP Host');
+        setPlaceholder('smtp-port', 'SMTP Port');
+        setPlaceholder('smtp-user', 'SMTP Username');
+        setPlaceholder('smtp-pass', 'SMTP Password');
+        setPlaceholder('smtp-test-to', '测试收件邮箱');
+        setPlaceholder('content-site-id', '站点ID');
+        setPlaceholder('content-post-type', 'post_type');
+        setPlaceholder('content-title', '标题');
+        setPlaceholder('content-post-date', '发布时间（YYYY-MM-DD HH:mm:ss）');
+        setPlaceholder('content-category-ids', '分类ID（逗号）');
+        setPlaceholder('content-tag-ids', '标签ID（逗号）');
+        setPlaceholder('content-featured-id', '封面图ID');
+        setPlaceholder('content-gallery-ids', '图库ID（逗号）');
+        setPlaceholder('content-body', '正文（可填HTML）');
+        setPlaceholder('translate-text', '文本');
+        setPlaceholder('translate-source', '源语言（可选，默认 auto）');
+        setPlaceholder('translate-target', '目标语言（如 en, zh）');
+        setPlaceholder('translate-format', '格式（text 或 html）');
+        setPlaceholder('translate-context', '上下文（可选）');
+        setText('btn-translate-proxy', '翻译（/api/proxy/translate）');
+        if (translateModeEl && translateModeEl.options.length >= 2) {
+          translateModeEl.options[0].textContent = '通用翻译';
+          translateModeEl.options[1].textContent = '专业翻译';
+        }
+        if (translateSceneEl && translateSceneEl.options.length >= 7) {
+          translateSceneEl.options[0].textContent = '场景（可选/专业翻译必选）';
+          translateSceneEl.options[1].textContent = '商品标题（title）';
+          translateSceneEl.options[2].textContent = '商品描述（description）';
+          translateSceneEl.options[3].textContent = '商品沟通（communication）';
+          translateSceneEl.options[4].textContent = '医疗（medical）';
+          translateSceneEl.options[5].textContent = '社交（social）';
+          translateSceneEl.options[6].textContent = '金融（finance）';
+        }
+        if (smtpMailerEl && smtpMailerEl.options.length >= 2) {
+          smtpMailerEl.options[0].textContent = 'Other SMTP';
+          smtpMailerEl.options[1].textContent = 'SMTP';
+        }
+        if (smtpEncryptionEl && smtpEncryptionEl.options.length >= 4) {
+          smtpEncryptionEl.options[0].textContent = 'None';
+          smtpEncryptionEl.options[1].textContent = 'None';
+          smtpEncryptionEl.options[2].textContent = 'SSL';
+          smtpEncryptionEl.options[3].textContent = 'TLS';
+        }
+        if (smtpAutoTlsEl && smtpAutoTlsEl.options.length >= 2) {
+          smtpAutoTlsEl.options[0].textContent = 'Auto TLS 开';
+          smtpAutoTlsEl.options[1].textContent = 'Auto TLS 关';
+        }
+        if (smtpAuthEl && smtpAuthEl.options.length >= 2) {
+          smtpAuthEl.options[0].textContent = 'Auth 开';
+          smtpAuthEl.options[1].textContent = 'Auth 关';
+        }
+
+        if (siteStatusEl && siteStatusEl.options.length >= 3) {
+          siteStatusEl.options[0].textContent = '站点状态（默认 0）';
+          siteStatusEl.options[1].textContent = '建站中';
+          siteStatusEl.options[2].textContent = '可上线';
+        }
+        if (siteFilterStatusEl && siteFilterStatusEl.options.length >= 3) {
+          siteFilterStatusEl.options[0].textContent = '站点状态（全部）';
+          siteFilterStatusEl.options[1].textContent = '建站中';
+          siteFilterStatusEl.options[2].textContent = '可上线';
+        }
+        if (userPageAllowEl && userPageAllowEl.options.length >= 2) {
+          userPageAllowEl.options[0].textContent = '允许访问';
+          userPageAllowEl.options[1].textContent = '禁止访问';
+        }
+      }
+
+      function show(title, data, req) {
+        if (req) {
+          showWithRequest(output, title, req, data);
+          return;
+        }
+        output.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        show(title, { error: message }, req);
+      }
+
+      function setLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(output, title, req);
+          return;
+        }
+        output.textContent = title + '\n' + '处理中...';
+      }
+
+      function showFile(title, data, req) {
+        if (req) {
+          showWithRequest(fileOutput, title, req, data);
+          return;
+        }
+        fileOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showFileError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showFile(title, { error: message }, req);
+      }
+
+      function setFileLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(fileOutput, title, req);
+          return;
+        }
+        fileOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showMediaConfig(title, data, req) {
+        if (req) {
+          showWithRequest(mediaConfigOutput, title, req, data);
+          return;
+        }
+        mediaConfigOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showMediaConfigError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showMediaConfig(title, { error: message }, req);
+      }
+
+      function setMediaConfigLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(mediaConfigOutput, title, req);
+          return;
+        }
+        mediaConfigOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showUser(title, data, req) {
+        if (req) {
+          showWithRequest(userOutput, title, req, data);
+          return;
+        }
+        userOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showUserError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showUser(title, { error: message }, req);
+      }
+
+      function setUserLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(userOutput, title, req);
+          return;
+        }
+        userOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showSite(title, data, req) {
+        if (req) {
+          showWithRequest(siteOutput, title, req, data);
+          return;
+        }
+        siteOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showSiteError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showSite(title, { error: message }, req);
+      }
+
+      function setSiteLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(siteOutput, title, req);
+          return;
+        }
+        siteOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showProxy(title, data, req) {
+        if (req) {
+          showWithRequest(proxyOutput, title, req, data);
+          return;
+        }
+        proxyOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showProxyError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showProxy(title, { error: message }, req);
+      }
+
+      function setProxyLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(proxyOutput, title, req);
+          return;
+        }
+        proxyOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showWpBasic(title, data, req) {
+        if (req) {
+          showWithRequest(wpBasicOutput, title, req, data);
+          return;
+        }
+        wpBasicOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showWpBasicError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showWpBasic(title, { error: message }, req);
+      }
+
+      function setWpBasicLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(wpBasicOutput, title, req);
+          return;
+        }
+        wpBasicOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showSmtp(title, data, req) {
+        if (req) {
+          showWithRequest(wpSmtpOutput, title, req, data);
+          return;
+        }
+        wpSmtpOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showSmtpError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showSmtp(title, { error: message }, req);
+      }
+
+      function setSmtpLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(wpSmtpOutput, title, req);
+          return;
+        }
+        wpSmtpOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showContent(title, data, req) {
+        if (req) {
+          showWithRequest(wpContentOutput, title, req, data);
+          return;
+        }
+        wpContentOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showContentError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showContent(title, { error: message }, req);
+      }
+
+      function setContentLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(wpContentOutput, title, req);
+          return;
+        }
+        wpContentOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function showTranslate(title, data, req) {
+        if (req) {
+          showWithRequest(translateOutput, title, req, data);
+          return;
+        }
+        translateOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showTranslateError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showTranslate(title, { error: message }, req);
+      }
+
+      function setTranslateLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(translateOutput, title, req);
+          return;
+        }
+        translateOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      async function parseJson(res) {
+        try {
+          return await res.json();
+        } catch (error) {
+          return { code: res.status, message: '非JSON响应' };
+        }
+      }
+
+      async function loadHealth() {
+        try {
+          const res = await fetch('/health');
+          const data = await parseJson(res);
+          const ok = data && data.code === 0;
+          if (statusLabel) {
+            statusLabel.textContent = ok ? '状态：正常' : '状态：异常';
+            statusLabel.classList.toggle('ok', ok);
+            statusLabel.classList.toggle('bad', !ok);
+          }
+          if (checksBox && data && data.data && Array.isArray(data.data.checks)) {
+            checksBox.innerHTML = data.data.checks
+              .map((item) => `[${item.ok ? '通过' : '失败'}] ${item.name}: ${item.message}`)
+              .map((line) => `<div class="check">${line}</div>`)
+              .join('');
+          }
+          if (rawOutput) {
+            rawOutput.textContent = JSON.stringify(data, null, 2);
+          }
+        } catch (error) {
+          if (statusLabel) {
+            statusLabel.textContent = '状态：异常';
+            statusLabel.classList.add('bad');
+          }
+        }
+      }
+
+      applyI18n();
+      function handleAuthSubmit() {
+        const username = authUsernameEl.value.trim();
+        const password = authPasswordEl.value;
+        if (username === 'yeehai' && password === 'yeehai') {
+          authOverlay.style.display = 'none';
+          authErrorEl.style.display = 'none';
+          appBox.style.display = 'block';
+          if (output) {
+            output.textContent = '页面已加载，等待操作...';
+          }
+          loadHealth();
+        } else {
+          authErrorEl.style.display = 'block';
+        }
+      }
+
+      if (authSubmitBtn) authSubmitBtn.addEventListener('click', handleAuthSubmit);
+      if (authPasswordEl) {
+        authPasswordEl.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            handleAuthSubmit();
+          }
+        });
+      }
+
+      async function testLogin() {
+        const username = usernameEl.value.trim();
+        const password = passwordEl.value;
+        if (!username || !password) {
+          show('登录失败', '请输入用户名和密码');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/auth/login',
+          { 'Content-Type': 'application/json' },
+          { username, password: '******' },
+        );
+        setLoading('登录中...', req);
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+          });
+          const data = await parseJson(res);
+          if (data.code === 0 && data.data && data.data.access_token) {
+            accessToken = data.data.access_token;
+          }
+          show('登录结果', data, req);
+        } catch (error) {
+          showError('登录失败', error, req);
+        }
+      }
+
+      async function testUserList() {
+        if (!accessToken) {
+          show('用户列表失败', '请先登录获取 access_token');
+          return;
+        }
+
+        const req = buildRequest(
+          'GET',
+          '/api/user/list',
+          { Authorization: 'Bearer ' + accessToken },
+        );
+        setLoading('获取用户列表中...', req);
+        try {
+          const res = await fetch('/api/user/list', {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          show('用户列表结果', data, req);
+        } catch (error) {
+          showError('用户列表失败', error, req);
+        }
+      }
+
+      async function testFileUpload() {
+        if (!accessToken) {
+          showFile('上传失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = fileSiteIdEl.value.trim();
+        const pageId = fileElementorIdEl.value.trim();
+        const componentId = fileComponentIdEl.value.trim();
+        const file = fileInputEl.files && fileInputEl.files[0];
+        if (!siteId || !file) {
+          showFile('上传失败', '请填写 site_id 并选择文件，page_id、component_id 可选');
+          return;
+        }
+
+        const fileInfo = {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/file/upload',
+          { Authorization: 'Bearer ' + accessToken },
+          undefined,
+          {
+            form: { site_id: siteId, page_id: pageId, component_id: componentId, file: fileInfo },
+          },
+        );
+        setFileLoading('上传中...', req);
+        try {
+          const form = new FormData();
+          form.append('site_id', siteId);
+          if (pageId) {
+            form.append('page_id', pageId);
+          }
+          if (componentId) {
+            form.append('component_id', componentId);
+          }
+          form.append('file', file);
+
+          const res = await fetch('/api/file/upload', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + accessToken },
+            body: form,
+          });
+          const data = await parseJson(res);
+          showFile('上传结果', data, req);
+        } catch (error) {
+          showFileError('上传失败', error, req);
+        }
+      }
+
+      async function testFileQuery() {
+        if (!accessToken) {
+          showFile('查询失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = fileSiteIdEl.value.trim();
+        const pageId = fileElementorIdEl.value.trim();
+        const componentId = fileComponentIdEl.value.trim();
+        if (!siteId) {
+          showFile('查询失败', '请填写 site_id');
+          return;
+        }
+
+        const params = new URLSearchParams({ site_id: siteId });
+        if (pageId) {
+          params.set('page_id', pageId);
+        }
+        if (componentId) {
+          params.set('component_id', componentId);
+        }
+        const queryUrl = '/api/file/get?' + params.toString();
+        const req = buildRequest(
+          'GET',
+          queryUrl,
+          { Authorization: 'Bearer ' + accessToken },
+        );
+        setFileLoading('查询中...', req);
+        try {
+          const res = await fetch(queryUrl, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showFile('查询结果', data, req);
+        } catch (error) {
+          showFileError('查询失败', error, req);
+        }
+      }
+
+      function parseSiteIds(raw) {
+        if (!raw) {
+          return [];
+        }
+        return raw
+          .split(',')
+          .map((item) => item.trim())
+          .filter((item) => item);
+      }
+
+      function parsePageIds(raw) {
+        if (!raw) {
+          return [];
+        }
+        return raw
+          .split(',')
+          .map((item) => Number(String(item).trim()))
+          .filter((item) => Number.isFinite(item) && item > 0);
+      }
+
+      function parseJsonArrayInput(raw, label) {
+        const text = (raw || '').trim();
+        if (!text) {
+          return { ok: false, message: '请填写 ' + label + ' JSON' };
+        }
+        try {
+          const value = JSON.parse(text);
+          if (!Array.isArray(value)) {
+            return { ok: false, message: label + ' JSON 必须是数组' };
+          }
+          return { ok: true, value };
+        } catch (error) {
+          return { ok: false, message: label + ' JSON 必须是合法 JSON' };
+        }
+      }
+
+      async function testMediaSaveJson() {
+        if (!accessToken) {
+          showMediaConfig('保存失败', '请先登录获取 access_token');
+          return;
+        }
+        const idText = mediaIdEl.value.trim();
+        const id = Number(idText);
+        const demo = mediaDemoEl.value.trim();
+        const page = mediaPageEl.value.trim();
+        const url = mediaUrlEl.value.trim();
+
+        if (!idText && (!demo || !page || !url)) {
+          showMediaConfig('保存失败', '新增时请填写 demo、page、url');
+          return;
+        }
+        if (idText && (!Number.isFinite(id) || id <= 0)) {
+          showMediaConfig('保存失败', '素材ID 必须为正整数');
+          return;
+        }
+        if (idText && !demo && !page && !url) {
+          showMediaConfig('保存失败', '更新时请至少填写一个要修改的字段');
+          return;
+        }
+
+        const body = {};
+        if (idText) body.id = id;
+        if (demo) body.demo = demo;
+        if (page) body.page = page;
+        if (url) body.url = url;
+        const req = buildRequest(
+          'POST',
+          '/api/media/save',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setMediaConfigLoading('保存素材中...', req);
+        try {
+          const res = await fetch('/api/media/save', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showMediaConfig('保存素材结果', data, req);
+        } catch (error) {
+          showMediaConfigError('保存失败', error, req);
+        }
+      }
+
+      async function testMediaSaveFile() {
+        if (!accessToken) {
+          showMediaConfig('上传失败', '请先登录获取 access_token');
+          return;
+        }
+        const idText = mediaIdEl.value.trim();
+        const id = Number(idText);
+        const demo = mediaDemoEl.value.trim();
+        const page = mediaPageEl.value.trim();
+        const file = mediaFileEl.files && mediaFileEl.files[0];
+        if (!file) {
+          showMediaConfig('上传失败', '请选择文件');
+          return;
+        }
+        if (idText && (!Number.isFinite(id) || id <= 0)) {
+          showMediaConfig('上传失败', '素材ID 必须为正整数');
+          return;
+        }
+        if (!idText && (!demo || !page)) {
+          showMediaConfig('上传失败', '新增上传时请填写 demo 和 page');
+          return;
+        }
+
+        const formPreview = {
+          file: { name: file.name, size: file.size, type: file.type },
+        };
+        if (idText) formPreview.id = id;
+        if (demo) formPreview.demo = demo;
+        if (page) formPreview.page = page;
+        const req = buildRequest(
+          'POST',
+          '/api/media/save',
+          { Authorization: 'Bearer ' + accessToken },
+          undefined,
+          { form: formPreview },
+        );
+        setMediaConfigLoading('上传素材中...', req);
+        try {
+          const form = new FormData();
+          if (idText) form.append('id', String(id));
+          if (demo) form.append('demo', demo);
+          if (page) form.append('page', page);
+          form.append('file', file);
+          const res = await fetch('/api/media/save', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + accessToken },
+            body: form,
+          });
+          const data = await parseJson(res);
+          showMediaConfig('上传素材结果', data, req);
+        } catch (error) {
+          showMediaConfigError('上传失败', error, req);
+        }
+      }
+
+      async function testMediaGet() {
+        if (!accessToken) {
+          showMediaConfig('查询失败', '请先登录获取 access_token');
+          return;
+        }
+        const idText = mediaIdEl.value.trim();
+        const id = Number(idText);
+        const demo = mediaDemoEl.value.trim();
+        const page = mediaPageEl.value.trim();
+        const listPage = mediaListPageEl.value.trim();
+        const pageSize = mediaListPageSizeEl.value.trim();
+        if (idText && (!Number.isFinite(id) || id <= 0)) {
+          showMediaConfig('查询失败', '素材ID 必须为正整数');
+          return;
+        }
+        if (listPage && (!/^\d+$/.test(listPage) || Number(listPage) <= 0)) {
+          showMediaConfig('查询失败', '列表页码必须为正整数');
+          return;
+        }
+        if (
+          pageSize &&
+          !['10', '50', '100', '1000'].includes(pageSize)
+        ) {
+          showMediaConfig(
+            '查询失败',
+            'page_size 仅支持 10、50、100、1000，不填则默认 10',
+          );
+          return;
+        }
+
+        const params = new URLSearchParams();
+        if (idText) {
+          params.set('id', String(id));
+        } else {
+          if (page) {
+            params.set('page_name', page);
+          }
+          if (demo) {
+            params.set('demo', demo);
+          }
+          if (listPage) {
+            params.set('page', listPage);
+          }
+          if (pageSize) {
+            params.set('page_size', pageSize);
+          }
+        }
+        const url = '/api/media/get?' + params.toString();
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setMediaConfigLoading('查询素材中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showMediaConfig('查询素材结果', data, req);
+        } catch (error) {
+          showMediaConfigError('查询失败', error, req);
+        }
+      }
+
+      async function testMediaDelete() {
+        if (!accessToken) {
+          showMediaConfig('删除失败', '请先登录获取 access_token');
+          return;
+        }
+        const idText = mediaDeleteIdEl.value.trim();
+        const id = Number(idText);
+        if (!idText || !Number.isFinite(id) || id <= 0) {
+          showMediaConfig('删除失败', '请输入有效的素材ID');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/media/delete',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { id },
+        );
+        setMediaConfigLoading('删除素材中...', req);
+        try {
+          const res = await fetch('/api/media/delete', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id }),
+          });
+          const data = await parseJson(res);
+          showMediaConfig('删除结果', data, req);
+        } catch (error) {
+          showMediaConfigError('删除失败', error, req);
+        }
+      }
+
+      async function testPageConfigSaveMaterials() {
+        if (!accessToken) {
+          showMediaConfig('保存失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = pageConfigSiteIdEl.value.trim();
+        const pageId = pageConfigPageIdEl.value.trim();
+        if (!siteId || !pageId) {
+          showMediaConfig('保存失败', '请填写 site_id 和 page_id');
+          return;
+        }
+        const parsed = parseJsonArrayInput(pageConfigMaterialsEl.value, '素材配置');
+        if (!parsed.ok) {
+          showMediaConfig('保存失败', parsed.message);
+          return;
+        }
+
+        const body = {
+          site_id: siteId,
+          data: {
+            [pageId]: parsed.value,
+          },
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/page_config/save_materials',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setMediaConfigLoading('保存素材配置中...', req);
+        try {
+          const res = await fetch('/api/page_config/save_materials', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showMediaConfig('保存素材配置结果', data, req);
+        } catch (error) {
+          showMediaConfigError('保存失败', error, req);
+        }
+      }
+
+      async function testPageConfigSaveSizes() {
+        if (!accessToken) {
+          showMediaConfig('保存失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = pageConfigSiteIdEl.value.trim();
+        const pageId = pageConfigPageIdEl.value.trim();
+        if (!siteId || !pageId) {
+          showMediaConfig('保存失败', '请填写 site_id 和 page_id');
+          return;
+        }
+        const parsed = parseJsonArrayInput(pageConfigSizesEl.value, '尺寸配置');
+        if (!parsed.ok) {
+          showMediaConfig('保存失败', parsed.message);
+          return;
+        }
+
+        const body = {
+          site_id: siteId,
+          data: {
+            [pageId]: parsed.value,
+          },
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/page_config/save_sizes',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setMediaConfigLoading('保存尺寸配置中...', req);
+        try {
+          const res = await fetch('/api/page_config/save_sizes', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showMediaConfig('保存尺寸配置结果', data, req);
+        } catch (error) {
+          showMediaConfigError('保存失败', error, req);
+        }
+      }
+
+      async function testPageConfigGet() {
+        if (!accessToken) {
+          showMediaConfig('查询失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = pageConfigSiteIdEl.value.trim();
+        const pageId = pageConfigPageIdEl.value.trim();
+        if (!siteId || !pageId) {
+          showMediaConfig('查询失败', '请填写 site_id 和 page_id');
+          return;
+        }
+        const url =
+          '/api/page_config/get?site_id=' +
+          encodeURIComponent(siteId) +
+          '&page_id=' +
+          encodeURIComponent(pageId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setMediaConfigLoading('查询页面配置中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showMediaConfig('查询页面配置结果', data, req);
+        } catch (error) {
+          showMediaConfigError('查询失败', error, req);
+        }
+      }
+
+      async function testUserAdd() {
+        if (!accessToken) {
+          showUser('新增失败', '请先登录获取 access_token');
+          return;
+        }
+        const username = userUsernameEl.value.trim();
+        const password = userPasswordEl.value;
+        const role = userRoleEl.value.trim();
+        const siteIds = parseSiteIds(userSiteIdsEl.value);
+        if (!username || !password) {
+          showUser('新增失败', '请输入用户名和密码');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/user/add',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          {
+            username,
+            password: '******',
+            role: role || undefined,
+            site_ids: siteIds,
+          },
+        );
+        setUserLoading('新增中...', req);
+        try {
+          const res = await fetch('/api/user/add', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              username,
+              password,
+              role: role || undefined,
+              site_ids: siteIds,
+            }),
+          });
+          const data = await parseJson(res);
+          showUser('新增结果', data, req);
+        } catch (error) {
+          showUserError('新增失败', error, req);
+        }
+      }
+
+      async function testUserUpdate() {
+        if (!accessToken) {
+          showUser('更新失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = userIdEl.value.trim();
+        const username = userUsernameEl.value.trim();
+        const password = userPasswordEl.value;
+        const role = userRoleEl.value.trim();
+        const siteIds = parseSiteIds(userSiteIdsEl.value);
+        if (!id && !username && !password && !role && siteIds.length === 0) {
+          showUser('更新失败', '请至少填写一个字段');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/user/update',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          {
+            id: id || undefined,
+            username: username || undefined,
+            password: password ? '******' : undefined,
+            role: role || undefined,
+            site_ids: siteIds.length ? siteIds : undefined,
+          },
+        );
+        setUserLoading('更新中...', req);
+        try {
+          const res = await fetch('/api/user/update', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id: id || undefined,
+              username: username || undefined,
+              password: password || undefined,
+              role: role || undefined,
+              site_ids: siteIds.length ? siteIds : undefined,
+            }),
+          });
+          const data = await parseJson(res);
+          showUser('更新结果', data, req);
+        } catch (error) {
+          showUserError('更新失败', error, req);
+        }
+      }
+
+      async function testUserRevoke() {
+        if (!accessToken) {
+          showUser('取消授权失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = userIdEl.value.trim();
+        const siteIds = parseSiteIds(userSiteIdsEl.value);
+        if (!id || siteIds.length === 0) {
+          showUser('取消授权失败', '请填写 user_id 和 site_id');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/user/revoke_sites',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          {
+            id,
+            site_ids: siteIds,
+          },
+        );
+        setUserLoading('取消授权中...', req);
+        try {
+          const res = await fetch('/api/user/revoke_sites', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id,
+              site_ids: siteIds,
+            }),
+          });
+          const data = await parseJson(res);
+          showUser('取消授权结果', data, req);
+        } catch (error) {
+          showUserError('取消授权失败', error, req);
+        }
+      }
+
+      async function testUserDelete() {
+        if (!accessToken) {
+          showUser('删除失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = userIdEl.value.trim();
+        if (!id) {
+          showUser('删除失败', '请输入 user_id');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/user/delete',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { id },
+        );
+        setUserLoading('删除中...', req);
+        try {
+          const res = await fetch('/api/user/delete', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id }),
+          });
+          const data = await parseJson(res);
+          showUser('删除结果', data, req);
+        } catch (error) {
+          showUserError('删除失败', error, req);
+        }
+      }
+
+      async function testUserDetail() {
+        if (!accessToken) {
+          showUser('查询失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = userIdEl.value.trim();
+        const username = userUsernameEl.value.trim();
+        const listUrl = username
+          ? '/api/user/list?username=' + encodeURIComponent(username)
+          : '/api/user/list';
+        const listReq = buildRequest(
+          'GET',
+          listUrl,
+          { Authorization: 'Bearer ' + accessToken },
+        );
+        try {
+          if (id) {
+            const detailUrl = '/api/user/' + encodeURIComponent(id);
+            const req = buildRequest(
+              'GET',
+              detailUrl,
+              { Authorization: 'Bearer ' + accessToken },
+              undefined,
+              { params: { id } },
+            );
+            setUserLoading('查询中...', req);
+            const res = await fetch(detailUrl, {
+              method: 'GET',
+              headers: { Authorization: 'Bearer ' + accessToken },
+            });
+            const data = await parseJson(res);
+            showUser('查询结果', data, req);
+            return;
+          }
+
+          setUserLoading('查询中...', listReq);
+          const res = await fetch(listUrl, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showUser('查询结果', data, listReq);
+        } catch (error) {
+          showUserError('查询失败', error, listReq);
+        }
+      }
+
+      function resetUserInputs() {
+        userIdEl.value = '';
+        userUsernameEl.value = '';
+        userPasswordEl.value = '';
+        userRoleEl.value = '';
+        userSiteIdsEl.value = '';
+        if (userPageSiteIdEl) userPageSiteIdEl.value = '';
+        if (userPageIdEl) userPageIdEl.value = '';
+        if (userPageClearIdsEl) userPageClearIdsEl.value = '';
+        if (userPageAllowEl) userPageAllowEl.value = 'true';
+        userOutput.textContent = '已清空输入';
+      }
+
+      async function testUserDeletedList() {
+        if (!accessToken) {
+          showUser('查询失败', '请先登录获取 access_token');
+          return;
+        }
+
+        const req = buildRequest(
+          'GET',
+          '/api/user/deleted',
+          { Authorization: 'Bearer ' + accessToken },
+        );
+        setUserLoading('查询中...', req);
+        try {
+          const res = await fetch('/api/user/deleted', {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showUser('已删列表', data, req);
+        } catch (error) {
+          showUserError('查询失败', error, req);
+        }
+      }
+
+      async function testUserRestore() {
+        if (!accessToken) {
+          showUser('恢复失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = userIdEl.value.trim();
+        if (!id) {
+          showUser('恢复失败', '请输入 user_id');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/user/restore',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { id },
+        );
+        setUserLoading('恢复中...', req);
+        try {
+          const res = await fetch('/api/user/restore', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id }),
+          });
+          const data = await parseJson(res);
+          showUser('恢复结果', data, req);
+        } catch (error) {
+          showUserError('恢复失败', error, req);
+        }
+      }
+
+      async function testUserPagePermissionSet() {
+        if (!accessToken) {
+          showUser('设置页面授权失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = Number(userIdEl.value.trim());
+        const siteId = userPageSiteIdEl.value.trim();
+        const pageId = Number(userPageIdEl.value.trim());
+        const allow = userPageAllowEl.value === 'true';
+        if (!Number.isFinite(id) || id <= 0 || !siteId || !Number.isFinite(pageId) || pageId <= 0) {
+          showUser('设置页面授权失败', '请填写 user_id、页面授权站点ID、页面ID');
+          return;
+        }
+
+        const body = { id, site_id: siteId, page_id: pageId, allow };
+        const req = buildRequest(
+          'POST',
+          '/api/user/set_page_permission',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setUserLoading('设置页面授权中...', req);
+        try {
+          const res = await fetch('/api/user/set_page_permission', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showUser('设置页面授权结果', data, req);
+        } catch (error) {
+          showUserError('设置页面授权失败', error, req);
+        }
+      }
+
+      async function testUserPagePermissionList() {
+        if (!accessToken) {
+          showUser('查询页面授权失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = Number(userIdEl.value.trim());
+        const siteId = userPageSiteIdEl.value.trim();
+        if (!Number.isFinite(id) || id <= 0 || !siteId) {
+          showUser('查询页面授权失败', '请填写 user_id 与页面授权站点ID');
+          return;
+        }
+
+        const url =
+          '/api/user/page_permissions?id=' +
+          encodeURIComponent(String(id)) +
+          '&site_id=' +
+          encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, { Authorization: 'Bearer ' + accessToken });
+        setUserLoading('查询页面授权中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showUser('查询页面授权结果', data, req);
+        } catch (error) {
+          showUserError('查询页面授权失败', error, req);
+        }
+      }
+
+      async function testUserPagePermissionClear() {
+        if (!accessToken) {
+          showUser('清空页面授权失败', '请先登录获取 access_token');
+          return;
+        }
+        const id = Number(userIdEl.value.trim());
+        const siteId = userPageSiteIdEl.value.trim();
+        const pageIds = parsePageIds(userPageClearIdsEl.value);
+        if (!Number.isFinite(id) || id <= 0 || !siteId) {
+          showUser('清空页面授权失败', '请填写 user_id 与页面授权站点ID');
+          return;
+        }
+
+        const body = { id, site_id: siteId, page_ids: pageIds };
+        const req = buildRequest(
+          'POST',
+          '/api/user/clear_page_permissions',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setUserLoading('清空页面授权中...', req);
+        try {
+          const res = await fetch('/api/user/clear_page_permissions', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showUser('清空页面授权结果', data, req);
+        } catch (error) {
+          showUserError('清空页面授权失败', error, req);
+        }
+      }
+
+      async function testSiteCreate() {
+        if (!accessToken) {
+          showSite('创建失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteName = siteNameEl.value.trim();
+        const siteUrl = siteUrlEl.value.trim();
+        const demoSite = siteDemoEl.value.trim();
+        const siteStatus = siteStatusEl.value.trim();
+        if (!siteName) {
+          showSite('创建失败', '请输入 site_name');
+          return;
+        }
+
+        const body = {
+          site_name: siteName,
+          site_url: siteUrl || undefined,
+          demo_site: demoSite || undefined,
+          site_status: siteStatus || undefined,
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/site/create',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setSiteLoading('创建中...', req);
+        try {
+          const res = await fetch('/api/site/create', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showSite('创建结果', data, req);
+          if (data && data.code === 0 && data.data && data.data.plugin_token) {
+            siteTokenEl.value = data.data.plugin_token;
+          }
+        } catch (error) {
+          showSiteError('创建失败', error, req);
+        }
+      }
+
+      async function testSiteUpdate() {
+        if (!accessToken) {
+          showSite('更新失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = siteIdEl.value.trim();
+        if (!siteId) {
+          showSite('更新失败', '请输入 site_id');
+          return;
+        }
+        const body = { site_id: siteId };
+        const siteName = siteNameEl.value.trim();
+        const siteUrl = siteUrlEl.value.trim();
+        const demoSite = siteDemoEl.value.trim();
+        const siteStatus = siteStatusEl.value.trim();
+        if (siteName) body.site_name = siteName;
+        if (siteUrl) body.site_url = siteUrl;
+        if (demoSite) body.demo_site = demoSite;
+        if (siteStatus) body.site_status = siteStatus;
+
+        if (!body.site_name && !body.site_url && !body.demo_site && !body.site_status) {
+          showSite('更新失败', '请至少填写一个要修改的字段');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/site/update',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setSiteLoading('更新中...', req);
+        try {
+          const res = await fetch('/api/site/update', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showSite('更新结果', data, req);
+        } catch (error) {
+          showSiteError('更新失败', error, req);
+        }
+      }
+
+      async function testSiteRebind() {
+        if (!accessToken) {
+          showSite('绑定失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = siteIdEl.value.trim();
+        if (!siteId) {
+          showSite('绑定失败', '请输入 site_id');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/site/bind',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { site_id: siteId },
+        );
+        setSiteLoading('绑定中...', req);
+        try {
+          const res = await fetch('/api/site/bind', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ site_id: siteId }),
+          });
+          const data = await parseJson(res);
+          showSite('绑定结果', data, req);
+        } catch (error) {
+          showSiteError('绑定失败', error, req);
+        }
+      }
+
+      async function testSiteBind() {
+        const pluginToken = siteTokenEl.value.trim();
+        const siteUrl = siteUrlEl.value.trim();
+        if (!pluginToken || !siteUrl) {
+          showSite('绑定失败', '请输入 plugin_token 和 site_url');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/site/bind_url',
+          { 'Content-Type': 'application/json' },
+          { plugin_token: pluginToken, site_url: siteUrl },
+        );
+        setSiteLoading('绑定中...', req);
+        try {
+          const res = await fetch('/api/site/bind_url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plugin_token: pluginToken, site_url: siteUrl }),
+          });
+          const data = await parseJson(res);
+          showSite('绑定结果', data, req);
+        } catch (error) {
+          showSiteError('绑定失败', error, req);
+        }
+      }
+
+      async function testSiteDelete() {
+        if (!accessToken) {
+          showSite('删除失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = siteIdEl.value.trim();
+        if (!siteId) {
+          showSite('删除失败', '请输入 site_id');
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/site/delete',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { site_id: siteId },
+        );
+        setSiteLoading('删除中...', req);
+        try {
+          const res = await fetch('/api/site/delete', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ site_id: siteId }),
+          });
+          const data = await parseJson(res);
+          showSite('删除结果', data, req);
+        } catch (error) {
+          showSiteError('删除失败', error, req);
+        }
+      }
+
+      async function testSiteList() {
+        if (!accessToken) {
+          showSite('查询失败', '请先登录获取 access_token');
+          return;
+        }
+
+        const params = new URLSearchParams();
+        const keyword = siteKeywordEl.value.trim();
+        const demoSite = siteFilterDemoEl.value.trim();
+        const status = siteFilterStatusEl.value.trim();
+        if (keyword) {
+          params.set('keyword', keyword);
+        }
+        if (demoSite) {
+          params.set('demo_site', demoSite);
+        }
+        if (status) {
+          params.set('site_status', status);
+        }
+        if (siteIncludeDeletedEl.checked) {
+          params.set('include_deleted', '1');
+        }
+        const query = params.toString();
+        const listUrl = '/api/site/list' + (query ? '?' + query : '');
+        const req = buildRequest(
+          'GET',
+          listUrl,
+          { Authorization: 'Bearer ' + accessToken },
+        );
+        setSiteLoading('查询中...', req);
+        try {
+          const res = await fetch(listUrl, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showSite('查询结果', data, req);
+        } catch (error) {
+          showSiteError('查询失败', error, req);
+        }
+      }
+
+      function resetSiteInputs() {
+        siteIdEl.value = '';
+        siteNameEl.value = '';
+        siteDemoEl.value = '';
+        siteStatusEl.value = '';
+        siteTokenEl.value = '';
+        siteUrlEl.value = '';
+        siteKeywordEl.value = '';
+        siteFilterDemoEl.value = '';
+        siteFilterStatusEl.value = '';
+        siteIncludeDeletedEl.checked = false;
+        siteOutput.textContent = '已清空输入';
+      }
+
+      async function testProxyPages() {
+        if (!accessToken) {
+          showProxy('获取页面失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        if (!siteId) {
+          showProxy('获取页面失败', '请填写 site_id');
+          return;
+        }
+        const url = '/api/proxy/get_pages?site_id=' + encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setProxyLoading('获取页面列表中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showProxy('页面列表结果', data, req);
+        } catch (error) {
+          showProxyError('获取页面失败', error, req);
+        }
+      }
+
+      async function testProxyElementor() {
+        if (!accessToken) {
+          showProxy('获取数据失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        const pageId = proxyPageIdEl.value.trim();
+        if (!siteId || !pageId) {
+          showProxy('获取数据失败', '请填写 site_id 和 页面ID');
+          return;
+        }
+        const url =
+          '/api/proxy/elementor_data/' +
+          encodeURIComponent(pageId) +
+          '?site_id=' +
+          encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setProxyLoading('获取Elementor数据中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showProxy('Elementor数据结果', data, req);
+        } catch (error) {
+          showProxyError('获取数据失败', error, req);
+        }
+      }
+
+      async function testProxyElementorJson() {
+        if (!accessToken) {
+          showProxy('获取数据失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        const pageId = proxyPageIdEl.value.trim();
+        if (!siteId || !pageId) {
+          showProxy('获取数据失败', '请填写 site_id 和 页面ID');
+          return;
+        }
+        const url =
+          '/api/proxy/elementor_data_json/' +
+          encodeURIComponent(pageId) +
+          '?site_id=' +
+          encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setProxyLoading('获取Elementor JSON中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showProxy('Elementor JSON结果', data, req);
+        } catch (error) {
+          showProxyError('获取数据失败', error, req);
+        }
+      }
+
+      async function testProxyElementorEltype() {
+        if (!accessToken) {
+          showProxy('获取数据失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        const pageId = proxyPageIdEl.value.trim();
+        if (!siteId || !pageId) {
+          showProxy('获取数据失败', '请填写 site_id 和 页面ID');
+          return;
+        }
+        const url =
+          '/api/proxy/elementor_data_eltype/' +
+          encodeURIComponent(pageId) +
+          '?site_id=' +
+          encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setProxyLoading('获取Elementor平铺中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showProxy('Elementor平铺结果', data, req);
+        } catch (error) {
+          showProxyError('获取数据失败', error, req);
+        }
+      }
+
+      async function testProxyUpdate() {
+        if (!accessToken) {
+          showProxy('更新失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        const pageId = proxyPageIdEl.value.trim();
+        const rawData = proxyDataEl.value.trim();
+        if (!siteId || !pageId || !rawData) {
+          showProxy('更新失败', '请填写 site_id、页面ID 与数据');
+          return;
+        }
+        let dataObj = rawData;
+        try {
+          dataObj = JSON.parse(rawData);
+        } catch (error) {
+          showProxy('更新失败', '数据必须是合法 JSON');
+          return;
+        }
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/update_elementor_data',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { site_id: siteId, id: pageId, data: dataObj },
+        );
+        setProxyLoading('更新Elementor数据中...', req);
+        try {
+          const res = await fetch('/api/proxy/update_elementor_data', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ site_id: siteId, id: pageId, data: dataObj }),
+          });
+          const data = await parseJson(res);
+          showProxy('更新结果', data, req);
+        } catch (error) {
+          showProxyError('更新失败', error, req);
+        }
+      }
+
+      async function testProxyUpload() {
+        if (!accessToken) {
+          showProxy('上传失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        const file = proxyFileEl.files && proxyFileEl.files[0];
+        if (!siteId || !file) {
+          showProxy('上传失败', '请填写 site_id 并选择文件');
+          return;
+        }
+        const fileInfo = { name: file.name, size: file.size, type: file.type };
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/upload_image',
+          { Authorization: 'Bearer ' + accessToken },
+          undefined,
+          { form: { site_id: siteId, file: fileInfo } },
+        );
+        setProxyLoading('上传中...', req);
+        try {
+          const form = new FormData();
+          form.append('site_id', siteId);
+          form.append('file', file);
+          const res = await fetch('/api/proxy/upload_image', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + accessToken },
+            body: form,
+          });
+          const data = await parseJson(res);
+          showProxy('上传结果', data, req);
+        } catch (error) {
+          showProxyError('上传失败', error, req);
+        }
+      }
+
+      async function testProxyMediaList() {
+        if (!accessToken) {
+          showProxy('获取失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        if (!siteId) {
+          showProxy('获取失败', '请填写 site_id');
+          return;
+        }
+        const page = Number(proxyMediaPageEl.value.trim() || 1);
+        const pageSize = Number(proxyMediaPageSizeEl.value.trim() || 20);
+        const params = new URLSearchParams();
+        params.set('site_id', siteId);
+        if (Number.isFinite(page) && page > 0) {
+          params.set('page', String(page));
+        }
+        if (Number.isFinite(pageSize) && pageSize > 0) {
+          params.set('page_size', String(pageSize));
+        }
+        const url = '/api/proxy/media_list?' + params.toString();
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setProxyLoading('获取媒体列表中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showProxy('媒体列表结果', data, req);
+        } catch (error) {
+          showProxyError('获取失败', error, req);
+        }
+      }
+
+      async function testProxyMediaDelete() {
+        if (!accessToken) {
+          showProxy('删除失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = proxySiteIdEl.value.trim();
+        const attachmentId = Number(proxyMediaIdEl.value.trim());
+        if (!siteId || !Number.isFinite(attachmentId) || attachmentId <= 0) {
+          showProxy('删除失败', '请填写 site_id 与媒体ID');
+          return;
+        }
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/media_delete',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { site_id: siteId, attachment_id: attachmentId },
+        );
+        setProxyLoading('删除媒体中...', req);
+        try {
+          const res = await fetch('/api/proxy/media_delete', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ site_id: siteId, attachment_id: attachmentId }),
+          });
+          const data = await parseJson(res);
+          showProxy('删除结果', data, req);
+        } catch (error) {
+          showProxyError('删除失败', error, req);
+        }
+      }
+
+      function getProductEntityId() {
+        const productId = Number(proxyProductIdEl.value.trim());
+        if (Number.isFinite(productId) && productId > 0) {
+          return productId;
+        }
+        const pageId = Number(proxyPageIdEl.value.trim());
+        if (Number.isFinite(pageId) && pageId > 0) {
+          return pageId;
+        }
+        const featuredId = Number(contentFeaturedIdEl ? contentFeaturedIdEl.value.trim() : '');
+        if (Number.isFinite(featuredId) && featuredId > 0) {
+          return featuredId;
+        }
+        return 0;
+      }
+
+      function getNewsEntityId() {
+        const newsId = Number(proxyNewsIdEl.value.trim());
+        if (Number.isFinite(newsId) && newsId > 0) {
+          return newsId;
+        }
+        const pageId = Number(proxyPageIdEl.value.trim());
+        if (Number.isFinite(pageId) && pageId > 0) {
+          return pageId;
+        }
+        return 0;
+      }
+
+      function getContentSiteId() {
+        const contentSiteId = contentSiteIdEl ? contentSiteIdEl.value.trim() : '';
+        if (contentSiteId) {
+          return contentSiteId;
+        }
+        const proxySiteId = proxySiteIdEl.value.trim();
+        if (proxySiteId) {
+          return proxySiteId;
+        }
+        const wpSiteId = wpSiteIdEl.value.trim();
+        if (wpSiteId) {
+          return wpSiteId;
+        }
+        const smtpSiteId = smtpSiteIdEl.value.trim();
+        if (smtpSiteId) {
+          return smtpSiteId;
+        }
+        const fileSiteId = fileSiteIdEl.value.trim();
+        if (fileSiteId) {
+          return fileSiteId;
+        }
+        return '';
+      }
+
+      function getProductSiteId() {
+        const siteId = proxyProductSiteIdEl ? proxyProductSiteIdEl.value.trim() : '';
+        return siteId || getContentSiteId();
+      }
+
+      function getNewsSiteId() {
+        const siteId = proxyNewsSiteIdEl ? proxyNewsSiteIdEl.value.trim() : '';
+        return siteId || getContentSiteId();
+      }
+
+      async function proxyGetById(path, title, id, idLabel, siteId) {
+        if (!accessToken) {
+          showContent(title + '失败', '请先登录获取 access_token');
+          return;
+        }
+        if (!siteId || !Number.isFinite(id) || id <= 0) {
+          showContent(
+            title + '失败',
+            '请填写 site_id 与' +
+              idLabel +
+              '（或页面ID）。当前读取到 site_id=' +
+              (siteId || '(空)') +
+              '，id=' +
+              (id || '(空)'),
+          );
+          return;
+        }
+        const url = path + '?site_id=' + encodeURIComponent(siteId) + '&id=' + encodeURIComponent(id);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setContentLoading(title + '中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showContent(title + '结果', data, req);
+        } catch (error) {
+          showContentError(title + '失败', error, req);
+        }
+      }
+
+      async function proxyPost(path, payload, title) {
+        if (!accessToken) {
+          showContent(title + '失败', '请先登录获取 access_token');
+          return;
+        }
+        const req = buildRequest(
+          'POST',
+          path,
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          payload,
+        );
+        setContentLoading(title + '中...', req);
+        try {
+          const res = await fetch(path, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await parseJson(res);
+          showContent(title + '结果', data, req);
+        } catch (error) {
+          showContentError(title + '失败', error, req);
+        }
+      }
+
+      async function testProxyProductGet() {
+        const siteId = getProductSiteId();
+        const id = getProductEntityId();
+        await proxyGetById('/api/proxy/product', '获取产品', id, '产品ID', siteId);
+      }
+
+      async function testProxyProductCreate() {
+        const siteId = getProductSiteId();
+        const title = proxyProductTitleEl.value.trim();
+        if (!accessToken) {
+          showContent('新增产品失败', '请先登录获取 access_token');
+          return;
+        }
+        if (!siteId || !title) {
+          showContent('新增产品失败', '请填写 site_id 与产品标题');
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          post_type: 'product',
+          title,
+          content: proxyProductContentBodyEl.value || undefined,
+          category_ids: parseIdList(proxyProductCategoryIdsEl.value),
+          featured_image_id: Number(proxyProductImageIdEl.value.trim()) || undefined,
+          gallery_ids: parseIdList(proxyProductGalleryIdsEl.value),
+        };
+        await proxyPost('/api/proxy/content_create', payload, '新增产品');
+      }
+
+      async function testProxyProductList() {
+        if (!accessToken) {
+          showContent('获取产品列表失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = getProductSiteId();
+        if (!siteId) {
+          showContent('获取产品列表失败', '请填写 site_id');
+          return;
+        }
+        const params = new URLSearchParams();
+        params.set('site_id', siteId);
+        const page = Number(proxyProductListPageEl.value.trim() || 1);
+        const pageSize = Number(proxyProductListPageSizeEl.value.trim() || 20);
+        const keyword = proxyProductListKeywordEl.value.trim();
+        const status = proxyProductListStatusEl.value.trim();
+        if (Number.isFinite(page) && page > 0) {
+          params.set('page', String(page));
+        }
+        if (Number.isFinite(pageSize) && pageSize > 0) {
+          params.set('page_size', String(pageSize));
+        }
+        if (keyword) {
+          params.set('keyword', keyword);
+        }
+        if (status) {
+          params.set('status', status);
+        }
+        const url = '/api/proxy/product_list?' + params.toString();
+        const req = buildRequest('GET', url, { Authorization: 'Bearer ' + accessToken });
+        setContentLoading('获取产品列表中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showContent('产品列表结果', data, req);
+        } catch (error) {
+          showContentError('获取产品列表失败', error, req);
+        }
+      }
+
+      async function testProxyProductUpdate() {
+        const siteId = getProductSiteId();
+        const id = getProductEntityId();
+        if (!siteId || !Number.isFinite(id) || id <= 0) {
+          showContent(
+            '更新产品失败',
+            '请填写 site_id 与产品ID（或页面ID）。当前读取到 site_id=' +
+              (siteId || '(空)') +
+              '，id=' +
+              (id || '(空)'),
+          );
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          id,
+          title: proxyProductTitleEl.value.trim() || undefined,
+          content: proxyProductContentBodyEl.value || undefined,
+          short_description: proxyProductShortDescriptionEl.value || undefined,
+          product_image_id: Number(proxyProductImageIdEl.value.trim()) || undefined,
+          product_gallery_ids: parseIdList(proxyProductGalleryIdsEl.value),
+          category_ids: parseIdList(proxyProductCategoryIdsEl.value),
+        };
+        await proxyPost('/api/proxy/product', payload, '更新产品');
+      }
+
+      async function testProxyProductDelete() {
+        const siteId = getProductSiteId();
+        const id = getProductEntityId();
+        if (!accessToken) {
+          showContent('删除产品失败', '请先登录获取 access_token');
+          return;
+        }
+        if (!siteId || !Number.isFinite(id) || id <= 0) {
+          showContent('删除产品失败', '请填写 site_id 与产品ID');
+          return;
+        }
+        const payload = { site_id: siteId, id };
+        await proxyPost('/api/proxy/product_delete', payload, '删除产品');
+      }
+
+      async function testProxyProductCategoriesGet() {
+        if (!accessToken) {
+          showContent('获取产品分类失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = getProductSiteId();
+        if (!siteId) {
+          showContent('获取产品分类失败', '请填写 site_id');
+          return;
+        }
+        const url = '/api/proxy/product_categories?site_id=' + encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setContentLoading('获取产品分类中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showContent('产品分类结果', data, req);
+        } catch (error) {
+          showContentError('获取产品分类失败', error, req);
+        }
+      }
+
+      async function testProxyProductCategoryUpdate() {
+        const siteId = getProductSiteId();
+        const id = Number(proxyProductCategoryIdEl.value.trim());
+        if (!siteId || !Number.isFinite(id) || id <= 0) {
+          showContent('更新产品分类失败', '请填写 site_id 与产品分类项ID');
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          id,
+          name: proxyProductCategoryNameEl.value.trim() || undefined,
+          slug: proxyProductCategorySlugEl.value.trim() || undefined,
+          parent: Number(proxyProductCategoryParentEl.value.trim()) || undefined,
+          description: proxyProductCategoryDescriptionEl.value || undefined,
+        };
+        await proxyPost('/api/proxy/product_category', payload, '更新产品分类');
+      }
+
+      async function testProxyNewsGet() {
+        const siteId = getNewsSiteId();
+        const id = getNewsEntityId();
+        await proxyGetById('/api/proxy/news', '获取新闻', id, '新闻ID', siteId);
+      }
+
+      async function testProxyNewsCreate() {
+        const siteId = getNewsSiteId();
+        const title = proxyNewsTitleEl.value.trim();
+        if (!accessToken) {
+          showContent('新增新闻失败', '请先登录获取 access_token');
+          return;
+        }
+        if (!siteId || !title) {
+          showContent('新增新闻失败', '请填写 site_id 与新闻标题');
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          post_type: 'post',
+          title,
+          excerpt: proxyNewsExcerptEl.value || undefined,
+          content: proxyNewsContentBodyEl.value || undefined,
+          category_ids: parseIdList(proxyNewsCategoryIdsEl.value),
+          featured_image_id: Number(proxyNewsFeaturedImageIdEl.value.trim()) || undefined,
+        };
+        await proxyPost('/api/proxy/content_create', payload, '新增新闻');
+      }
+
+      async function testProxyNewsList() {
+        if (!accessToken) {
+          showContent('获取新闻列表失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = getNewsSiteId();
+        if (!siteId) {
+          showContent('获取新闻列表失败', '请填写 site_id');
+          return;
+        }
+        const params = new URLSearchParams();
+        params.set('site_id', siteId);
+        const page = Number(proxyNewsListPageEl.value.trim() || 1);
+        const pageSize = Number(proxyNewsListPageSizeEl.value.trim() || 20);
+        const keyword = proxyNewsListKeywordEl.value.trim();
+        const status = proxyNewsListStatusEl.value.trim();
+        if (Number.isFinite(page) && page > 0) {
+          params.set('page', String(page));
+        }
+        if (Number.isFinite(pageSize) && pageSize > 0) {
+          params.set('page_size', String(pageSize));
+        }
+        if (keyword) {
+          params.set('keyword', keyword);
+        }
+        if (status) {
+          params.set('status', status);
+        }
+        const url = '/api/proxy/news_list?' + params.toString();
+        const req = buildRequest('GET', url, { Authorization: 'Bearer ' + accessToken });
+        setContentLoading('获取新闻列表中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showContent('新闻列表结果', data, req);
+        } catch (error) {
+          showContentError('获取新闻列表失败', error, req);
+        }
+      }
+
+      async function testProxyNewsUpdate() {
+        const siteId = getNewsSiteId();
+        const id = getNewsEntityId();
+        if (!siteId || !Number.isFinite(id) || id <= 0) {
+          showContent(
+            '更新新闻失败',
+            '请填写 site_id 与新闻ID（或页面ID）。当前读取到 site_id=' +
+              (siteId || '(空)') +
+              '，id=' +
+              (id || '(空)'),
+          );
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          id,
+          title: proxyNewsTitleEl.value.trim() || undefined,
+          excerpt: proxyNewsExcerptEl.value || undefined,
+          content: proxyNewsContentBodyEl.value || undefined,
+          featured_image_id: Number(proxyNewsFeaturedImageIdEl.value.trim()) || undefined,
+          category_ids: parseIdList(proxyNewsCategoryIdsEl.value),
+        };
+        await proxyPost('/api/proxy/news', payload, '更新新闻');
+      }
+
+      async function testProxyNewsDelete() {
+        const siteId = getNewsSiteId();
+        const id = getNewsEntityId();
+        if (!accessToken) {
+          showContent('删除新闻失败', '请先登录获取 access_token');
+          return;
+        }
+        if (!siteId || !Number.isFinite(id) || id <= 0) {
+          showContent('删除新闻失败', '请填写 site_id 与新闻ID');
+          return;
+        }
+        const payload = { site_id: siteId, id };
+        await proxyPost('/api/proxy/news_delete', payload, '删除新闻');
+      }
+
+      async function testProxyNewsCategoriesGet() {
+        if (!accessToken) {
+          showContent('获取新闻分类失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = getNewsSiteId();
+        if (!siteId) {
+          showContent('获取新闻分类失败', '请填写 site_id');
+          return;
+        }
+        const url = '/api/proxy/news_categories?site_id=' + encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setContentLoading('获取新闻分类中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showContent('新闻分类结果', data, req);
+        } catch (error) {
+          showContentError('获取新闻分类失败', error, req);
+        }
+      }
+
+      async function testProxyNewsCategoryUpdate() {
+        const siteId = getNewsSiteId();
+        const id = Number(proxyNewsCategoryIdEl.value.trim());
+        if (!siteId || !Number.isFinite(id) || id <= 0) {
+          showContent('更新新闻分类失败', '请填写 site_id 与新闻分类项ID');
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          id,
+          name: proxyNewsCategoryNameEl.value.trim() || undefined,
+          slug: proxyNewsCategorySlugEl.value.trim() || undefined,
+          parent: Number(proxyNewsCategoryParentEl.value.trim()) || undefined,
+          description: proxyNewsCategoryDescriptionEl.value || undefined,
+        };
+        await proxyPost('/api/proxy/news_category', payload, '更新新闻分类');
+      }
+
+      async function testProxyShortDescGet() {
+        const siteId = getProductSiteId();
+        const id = getProductEntityId();
+        await proxyGetById('/api/proxy/product_short_description', '获取产品短描述', id, '产品ID', siteId);
+      }
+
+      async function testProxyShortDescUpdate() {
+        const siteId = getProductSiteId();
+        const id = getProductEntityId();
+        const shortDescription = proxyProductShortDescriptionEl.value;
+        if (!siteId || !Number.isFinite(id) || id <= 0 || !shortDescription) {
+          showContent(
+            '更新产品短描述失败',
+            '请填写 site_id、产品ID（或页面ID）与短描述。当前读取到 site_id=' +
+              (siteId || '(空)') +
+              '，id=' +
+              (id || '(空)'),
+          );
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          id,
+          short_description: shortDescription,
+        };
+        await proxyPost('/api/proxy/product_short_description', payload, '更新产品短描述');
+      }
+
+      function parseIdList(raw) {
+        if (!raw) {
+          return [];
+        }
+        return raw
+          .split(',')
+          .map((item) => Number(item.trim()))
+          .filter((item) => Number.isFinite(item) && item > 0);
+      }
+
+      async function testWpSiteTitle() {
+        if (!accessToken) {
+          showWpBasic('更新失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = wpSiteIdEl.value.trim();
+        const title = wpSiteTitleEl.value.trim();
+        if (!siteId || !title) {
+          showWpBasic('更新失败', '请填写 site_id 与标题');
+          return;
+        }
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/site_title',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { site_id: siteId, title },
+        );
+        setWpBasicLoading('更新中...', req);
+        try {
+          const res = await fetch('/api/proxy/site_title', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ site_id: siteId, title }),
+          });
+          const data = await parseJson(res);
+          showWpBasic('更新结果', data, req);
+        } catch (error) {
+          showWpBasicError('更新失败', error, req);
+        }
+      }
+
+      async function testWpSiteTitleGet() {
+        if (!accessToken) {
+          showWpBasic('获取失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = wpSiteIdEl.value.trim();
+        if (!siteId) {
+          showWpBasic('获取失败', '请填写 site_id');
+          return;
+        }
+        const url = '/api/proxy/site_title?site_id=' + encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setWpBasicLoading('获取中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showWpBasic('获取结果', data, req);
+        } catch (error) {
+          showWpBasicError('获取失败', error, req);
+        }
+      }
+
+      async function testWpSiteIcon() {
+        if (!accessToken) {
+          showWpBasic('更新失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = wpSiteIdEl.value.trim();
+        if (!siteId) {
+          showWpBasic('更新失败', '请填写 site_id');
+          return;
+        }
+        const file = wpSiteIconFileEl.files && wpSiteIconFileEl.files[0];
+        const attachmentId = Number(wpSiteIconIdEl.value.trim());
+        const hasAttachment = Number.isFinite(attachmentId) && attachmentId > 0;
+        if (!file && !hasAttachment) {
+          showWpBasic('更新失败', '请上传文件或填写 attachment_id');
+          return;
+        }
+
+        if (file) {
+          const req = buildRequest(
+            'POST',
+            '/api/proxy/site_icon',
+            { Authorization: 'Bearer ' + accessToken },
+            undefined,
+            { form: { site_id: siteId, file: { name: file.name } } },
+          );
+          setWpBasicLoading('上传中...', req);
+          try {
+            const form = new FormData();
+            form.append('site_id', siteId);
+            form.append('file', file);
+            const res = await fetch('/api/proxy/site_icon', {
+              method: 'POST',
+              headers: { Authorization: 'Bearer ' + accessToken },
+              body: form,
+            });
+            const data = await parseJson(res);
+            showWpBasic('设置结果', data, req);
+          } catch (error) {
+            showWpBasicError('更新失败', error, req);
+          }
+          return;
+        }
+
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/site_icon',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { site_id: siteId, attachment_id: attachmentId },
+        );
+        setWpBasicLoading('更新中...', req);
+        try {
+          const res = await fetch('/api/proxy/site_icon', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ site_id: siteId, attachment_id: attachmentId }),
+          });
+          const data = await parseJson(res);
+          showWpBasic('设置结果', data, req);
+        } catch (error) {
+          showWpBasicError('更新失败', error, req);
+        }
+      }
+
+      async function testWpSiteIconGet() {
+        if (!accessToken) {
+          showWpBasic('获取失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = wpSiteIdEl.value.trim();
+        if (!siteId) {
+          showWpBasic('获取失败', '请填写 site_id');
+          return;
+        }
+        const url = '/api/proxy/site_icon?site_id=' + encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setWpBasicLoading('获取中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showWpBasic('获取结果', data, req);
+        } catch (error) {
+          showWpBasicError('获取失败', error, req);
+        }
+      }
+
+      async function testSmtpSave() {
+        if (!accessToken) {
+          showSmtp('保存失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = smtpSiteIdEl.value.trim();
+        if (!siteId) {
+          showSmtp('保存失败', '请填写 site_id');
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          from_email: smtpFromEmailEl.value.trim() || undefined,
+          from_name: smtpFromNameEl.value.trim() || undefined,
+          mailer: smtpMailerEl.value.trim() || undefined,
+          smtp_host: smtpHostEl.value.trim() || undefined,
+          smtp_encryption: smtpEncryptionEl.value.trim() || undefined,
+          smtp_port: smtpPortEl.value.trim() || undefined,
+          smtp_auto_tls: smtpAutoTlsEl.value.trim(),
+          smtp_auth: smtpAuthEl.value.trim(),
+          smtp_user: smtpUserEl.value.trim() || undefined,
+          smtp_pass: smtpPassEl.value || undefined,
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/smtp_config',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          payload,
+        );
+        setSmtpLoading('保存中...', req);
+        try {
+          const res = await fetch('/api/proxy/smtp_config', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await parseJson(res);
+          showSmtp('保存结果', data, req);
+        } catch (error) {
+          showSmtpError('保存失败', error, req);
+        }
+      }
+
+      async function testSmtpTest() {
+        if (!accessToken) {
+          showSmtp('发送失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = smtpSiteIdEl.value.trim();
+        const to = smtpTestToEl.value.trim();
+        if (!siteId || !to) {
+          showSmtp('发送失败', '请填写 site_id 与收件邮箱');
+          return;
+        }
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/smtp_test',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { site_id: siteId, to },
+        );
+        setSmtpLoading('发送中...', req);
+        try {
+          const res = await fetch('/api/proxy/smtp_test', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ site_id: siteId, to }),
+          });
+          const data = await parseJson(res);
+          showSmtp('发送结果', data, req);
+        } catch (error) {
+          showSmtpError('发送失败', error, req);
+        }
+      }
+
+      async function testPostTypes() {
+        if (!accessToken) {
+          showContent('获取失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = getContentSiteId();
+        if (!siteId) {
+          showContent('获取失败', '请填写 site_id');
+          return;
+        }
+        const url = '/api/proxy/post_types?site_id=' + encodeURIComponent(siteId);
+        const req = buildRequest('GET', url, {
+          Authorization: 'Bearer ' + accessToken,
+        });
+        setContentLoading('获取中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showContent('post_types 结果', data, req);
+        } catch (error) {
+          showContentError('获取失败', error, req);
+        }
+      }
+
+      async function testContentCreate() {
+        if (!accessToken) {
+          showContent('创建失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = getContentSiteId();
+        const postType = contentPostTypeEl ? contentPostTypeEl.value.trim() : '';
+        const title = contentTitleEl ? contentTitleEl.value.trim() : '';
+        if (!siteId || !postType || !title) {
+          showContent('创建失败', '请填写 site_id、post_type 与标题');
+          return;
+        }
+        const payload = {
+          site_id: siteId,
+          post_type: postType,
+          title,
+          content: contentBodyEl ? contentBodyEl.value || undefined : undefined,
+          post_date: contentPostDateEl ? contentPostDateEl.value.trim() || undefined : undefined,
+          category_ids: parseIdList(contentCategoryIdsEl ? contentCategoryIdsEl.value : ''),
+          tag_ids: parseIdList(contentTagIdsEl ? contentTagIdsEl.value : ''),
+          featured_image_id: Number(contentFeaturedIdEl ? contentFeaturedIdEl.value.trim() : '') || undefined,
+          gallery_ids: parseIdList(contentGalleryIdsEl ? contentGalleryIdsEl.value : ''),
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/proxy/content_create',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          payload,
+        );
+        setContentLoading('创建中...', req);
+        try {
+          const res = await fetch('/api/proxy/content_create', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await parseJson(res);
+          showContent('创建结果', data, req);
+        } catch (error) {
+          showContentError('创建失败', error, req);
+        }
+      }
+
+      async function testTranslate() {
+        if (!accessToken) {
+          showTranslate('翻译失败', '请先登录获取 access_token');
+          return;
+        }
+        const text = translateTextEl.value.trim();
+        const source = translateSourceEl.value.trim();
+        const target = translateTargetEl.value.trim();
+        const formatType = translateFormatEl.value.trim();
+        const mode = translateModeEl ? translateModeEl.value.trim() : '';
+        const scene = translateSceneEl.value.trim();
+        const context = translateContextEl.value.trim();
+        if (!text || !target) {
+          showTranslate('翻译失败', '请填写文本与目标语言');
+          return;
+        }
+        const url = '/api/proxy/translate';
+        const body = {
+          text,
+          target_language: target,
+          source_language: source || undefined,
+          format_type: formatType || undefined,
+          mode: mode || undefined,
+          scene: scene || undefined,
+          context: context || undefined,
+        };
+        const req = buildRequest(
+          'POST',
+          url,
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          {
+            text,
+            target_language: target,
+            source_language: source || undefined,
+            format_type: formatType || undefined,
+            mode: mode || undefined,
+            scene: scene || undefined,
+            context: context || undefined,
+          },
+        );
+        setTranslateLoading('翻译中...', req);
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showTranslate('翻译结果', data, req);
+        } catch (error) {
+          showTranslateError('翻译失败', error, req);
+        }
+      }
+
+      if (loginBtn) loginBtn.addEventListener('click', testLogin);
+      if (listBtn) listBtn.addEventListener('click', testUserList);
+      if (fileUploadBtn) fileUploadBtn.addEventListener('click', testFileUpload);
+      if (fileQueryBtn) fileQueryBtn.addEventListener('click', testFileQuery);
+      if (mediaSaveJsonBtn) mediaSaveJsonBtn.addEventListener('click', testMediaSaveJson);
+      if (mediaSaveFileBtn) mediaSaveFileBtn.addEventListener('click', testMediaSaveFile);
+      if (mediaGetBtn) mediaGetBtn.addEventListener('click', testMediaGet);
+      if (mediaDeleteBtn) mediaDeleteBtn.addEventListener('click', testMediaDelete);
+      if (pageConfigSaveMaterialsBtn) pageConfigSaveMaterialsBtn.addEventListener('click', testPageConfigSaveMaterials);
+      if (pageConfigSaveSizesBtn) pageConfigSaveSizesBtn.addEventListener('click', testPageConfigSaveSizes);
+      if (pageConfigGetBtn) pageConfigGetBtn.addEventListener('click', testPageConfigGet);
+      if (userAddBtn) userAddBtn.addEventListener('click', testUserAdd);
+      if (userUpdateBtn) userUpdateBtn.addEventListener('click', testUserUpdate);
+      if (userRevokeBtn) userRevokeBtn.addEventListener('click', testUserRevoke);
+      if (userDeleteBtn) userDeleteBtn.addEventListener('click', testUserDelete);
+      if (userDetailBtn) userDetailBtn.addEventListener('click', testUserDetail);
+      if (userResetBtn) userResetBtn.addEventListener('click', resetUserInputs);
+      if (userDeletedBtn) userDeletedBtn.addEventListener('click', testUserDeletedList);
+      if (userRestoreBtn) userRestoreBtn.addEventListener('click', testUserRestore);
+      if (userPageSetBtn) userPageSetBtn.addEventListener('click', testUserPagePermissionSet);
+      if (userPageListBtn) userPageListBtn.addEventListener('click', testUserPagePermissionList);
+      if (userPageClearBtn) userPageClearBtn.addEventListener('click', testUserPagePermissionClear);
+      if (siteCreateBtn) siteCreateBtn.addEventListener('click', testSiteCreate);
+      if (siteUpdateBtn) siteUpdateBtn.addEventListener('click', testSiteUpdate);
+      if (siteBindBtn) siteBindBtn.addEventListener('click', testSiteBind);
+      if (siteRebindBtn) siteRebindBtn.addEventListener('click', testSiteRebind);
+      if (siteDeleteBtn) siteDeleteBtn.addEventListener('click', testSiteDelete);
+      if (siteListBtn) siteListBtn.addEventListener('click', testSiteList);
+      if (siteResetBtn) siteResetBtn.addEventListener('click', resetSiteInputs);
+      if (proxyPagesBtn) proxyPagesBtn.addEventListener('click', testProxyPages);
+      if (proxyElementorBtn) proxyElementorBtn.addEventListener('click', testProxyElementor);
+      if (proxyElementorJsonBtn) proxyElementorJsonBtn.addEventListener('click', testProxyElementorJson);
+      if (proxyElementorEltypeBtn) proxyElementorEltypeBtn.addEventListener('click', testProxyElementorEltype);
+      if (proxyUpdateBtn) proxyUpdateBtn.addEventListener('click', testProxyUpdate);
+      if (proxyUploadBtn) proxyUploadBtn.addEventListener('click', testProxyUpload);
+      if (proxyMediaListBtn) proxyMediaListBtn.addEventListener('click', testProxyMediaList);
+      if (proxyMediaDeleteBtn) proxyMediaDeleteBtn.addEventListener('click', testProxyMediaDelete);
+      if (proxyProductCreateBtn) proxyProductCreateBtn.addEventListener('click', testProxyProductCreate);
+      if (proxyProductGetBtn) proxyProductGetBtn.addEventListener('click', testProxyProductGet);
+      if (proxyProductListBtn) proxyProductListBtn.addEventListener('click', testProxyProductList);
+      if (proxyProductUpdateBtn) proxyProductUpdateBtn.addEventListener('click', testProxyProductUpdate);
+      if (proxyProductDeleteBtn) proxyProductDeleteBtn.addEventListener('click', testProxyProductDelete);
+      if (proxyProductCategoriesGetBtn) proxyProductCategoriesGetBtn.addEventListener('click', testProxyProductCategoriesGet);
+      if (proxyProductCategoryUpdateBtn) proxyProductCategoryUpdateBtn.addEventListener('click', testProxyProductCategoryUpdate);
+      if (proxyNewsCreateBtn) proxyNewsCreateBtn.addEventListener('click', testProxyNewsCreate);
+      if (proxyNewsGetBtn) proxyNewsGetBtn.addEventListener('click', testProxyNewsGet);
+      if (proxyNewsListBtn) proxyNewsListBtn.addEventListener('click', testProxyNewsList);
+      if (proxyNewsUpdateBtn) proxyNewsUpdateBtn.addEventListener('click', testProxyNewsUpdate);
+      if (proxyNewsDeleteBtn) proxyNewsDeleteBtn.addEventListener('click', testProxyNewsDelete);
+      if (proxyNewsCategoriesGetBtn) proxyNewsCategoriesGetBtn.addEventListener('click', testProxyNewsCategoriesGet);
+      if (proxyNewsCategoryUpdateBtn) proxyNewsCategoryUpdateBtn.addEventListener('click', testProxyNewsCategoryUpdate);
+      if (proxyShortDescGetBtn) proxyShortDescGetBtn.addEventListener('click', testProxyShortDescGet);
+      if (proxyShortDescUpdateBtn) proxyShortDescUpdateBtn.addEventListener('click', testProxyShortDescUpdate);
+      if (wpTitleBtn) wpTitleBtn.addEventListener('click', testWpSiteTitle);
+      if (wpTitleGetBtn) wpTitleGetBtn.addEventListener('click', testWpSiteTitleGet);
+      if (wpIconBtn) wpIconBtn.addEventListener('click', testWpSiteIcon);
+      if (wpIconGetBtn) wpIconGetBtn.addEventListener('click', testWpSiteIconGet);
+      if (smtpSaveBtn) smtpSaveBtn.addEventListener('click', testSmtpSave);
+      if (smtpTestBtn) smtpTestBtn.addEventListener('click', testSmtpTest);
+      if (postTypesBtn) postTypesBtn.addEventListener('click', testPostTypes);
+      if (contentCreateBtn) contentCreateBtn.addEventListener('click', testContentCreate);
+      if (translateProxyBtn) translateProxyBtn.addEventListener('click', testTranslate);
+    })();
+  </script>
+</body>
+</html>
