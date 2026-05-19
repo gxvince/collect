@@ -158,9 +158,9 @@
       <input id="site-url" />
       <input id="site-demo" />
       <select id="site-status">
-        <option value="">状态</option>
-        <option value="0">0=正常</option>
-        <option value="1">1=禁用</option>
+        <option value=""></option>
+        <option value="0"></option>
+        <option value="1"></option>
       </select>
       <button id="btn-site-create"></button>
       <button id="btn-site-update"></button>
@@ -176,9 +176,9 @@
       <input id="site-keyword" />
       <input id="site-filter-demo" />
       <select id="site-filter-status">
-        <option value="">全部状态</option>
-        <option value="0">0=正常</option>
-        <option value="1">1=禁用</option>
+        <option value=""></option>
+        <option value="0"></option>
+        <option value="1"></option>
       </select>
       <label><input id="site-include-deleted" type="checkbox" /><span id="site-include-label"></span></label>
       <input id="site-list-page" type="number" min="1" />
@@ -672,7 +672,7 @@
         setText('note-user', '说明：以上操作需要管理员账号。');
         setText('btn-site-update', '更新站点');
         setText('btn-site-rebind', '重新绑定');
-        setText('note-site', '说明：创建/更新/删除需管理员账号。site_status=1 的站点会阻止授权普通用户登录。');
+        setText('note-site', '说明：创建/更新/删除需管理员账号。');
         setText('note-proxy', '说明：需已登录且具备站点权限。');
         setText('note-wp-basic', '说明：站点图标支持上传文件或填写 attachment_id。');
         setText('note-wp-smtp', '说明：保存后可用下方测试发送。');

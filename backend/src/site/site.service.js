@@ -120,6 +120,9 @@ export class SiteService {
   async listSites(options = {}) {
     const keyword = this.normalizeKeyword(options.keyword);
     const demoSite = options.demoSite ? String(options.demoSite).trim() : '';
+    const page = Math.max(1, Number(options.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(options.pageSize) || 10));
+    const offset = (page - 1) * pageSize;
     const { whereSql, params } = this.buildListConditions({
       keyword,
       demoSite,
@@ -127,11 +130,17 @@ export class SiteService {
       includeDeleted: options.includeDeleted,
     });
 
-    const [rows] = await this.dbPool.query(
-      `SELECT site_id, site_name, site_status, demo_site, wp_base_url, wp_auth_type, wp_auth_token, is_deleted, created_at, updated_at FROM sites ${whereSql} ORDER BY created_at DESC`,
+    const [countRows] = await this.dbPool.query(
+      `SELECT COUNT(*) AS total FROM sites ${whereSql}`,
       params,
     );
-    return rows;
+    const total = countRows[0]?.total ?? 0;
+
+    const [rows] = await this.dbPool.query(
+      `SELECT site_id, site_name, site_status, demo_site, wp_base_url, wp_auth_type, wp_auth_token, is_deleted, created_at, updated_at FROM sites ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, pageSize, offset],
+    );
+    return { total, list: rows, page, pageSize };
   }
 
   async listSitesByIds(siteIds, options = {}) {

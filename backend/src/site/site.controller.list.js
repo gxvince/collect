@@ -25,10 +25,10 @@ export class SiteListController {
       return { provided: false, value: null };
     }
     const normalized = String(raw).trim().toLowerCase();
-    if (normalized === '0' || normalized === 'building') {
+    if (normalized === '0' || normalized === 'online') {
       return { provided: true, value: 0 };
     }
-    if (normalized === '1' || normalized === 'online') {
+    if (normalized === '1' || normalized === 'disabled') {
       return { provided: true, value: 1 };
     }
     return { provided: true, value: null };
@@ -60,6 +60,13 @@ export class SiteListController {
       return { code: 401, data: null, message: '未登录' };
     }
 
+    if (user.role !== 'admin') {
+      const locked = await this.authService.hasUserDisabledSites(user.id);
+      if (locked) {
+        return { code: 401, data: null, message: '账号已失效，请联系管理员' };
+      }
+    }
+
     const query = this.request.query || {};
     const keyword = (query.keyword || '').trim();
     const demoSite = (query.demo_site || '').trim();
@@ -68,16 +75,25 @@ export class SiteListController {
       return { code: 422, data: null, message: 'site_status 仅支持 0/1' };
     }
 
+    const page = Math.max(1, Number(query.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(query.page_size) || 10));
+
     if (user.role === 'admin') {
       const includeDeleted = this.parseIncludeDeleted(query.include_deleted);
-      const list = await this.siteService.listSites({
+      const result = await this.siteService.listSites({
         keyword,
         demoSite,
         siteStatus: statusResult.value,
         includeDeleted,
+        page,
+        pageSize,
       });
-      const listWithUsers = await this.siteService.attachUserRelations(list);
-      return { code: 0, data: listWithUsers, message: '获取成功' };
+      const listWithUsers = await this.siteService.attachUserRelations(result.list);
+      return {
+        code: 0,
+        data: { list: listWithUsers, page: result.page, page_size: result.pageSize, total: result.total },
+        message: '获取成功',
+      };
     }
 
     const siteIds = await this.authService.getUserSiteIds(user);
@@ -86,6 +102,6 @@ export class SiteListController {
       demoSite,
       siteStatus: statusResult.value,
     });
-    return { code: 0, data: list, message: '获取成功' };
+    return { code: 0, data: { list, page: 1, page_size: list.length, total: list.length }, message: '获取成功' };
   }
 }

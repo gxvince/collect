@@ -32,6 +32,12 @@ export class TranslateController {
       if (!user || user.is_deleted) {
         return { error: { code: 401, message: '未登录' } };
       }
+      if (user.role !== 'admin') {
+        const locked = await this.authService.hasUserDisabledSites(user.id);
+        if (locked) {
+          return { error: { code: 401, message: '账号已失效，请联系管理员' } };
+        }
+      }
       return { user };
     } catch (error) {
       return { error: { code: 401, message: '未登录' } };

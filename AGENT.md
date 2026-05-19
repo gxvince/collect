@@ -26,7 +26,7 @@
 - 每个站点需配置 WordPress 访问信息（建议表 `sites` 维护）：
   - `site_id`（主键）
   - `site_name`
-  - `site_status`（0=建站中，1=可上线）
+  - `site_status`（0=正常，1=禁用）
   - `wp_base_url`
   - `wp_auth_type`（basic / jwt / app_password / api_key）
   - `wp_auth_token` 或 `wp_username/wp_password`（按认证方式存储）
@@ -63,7 +63,7 @@
 4) `sites`
 - `site_id` (pk)
 - `site_name`
-- `site_status` tinyint(1)（0=建站中，1=可上线）
+- `site_status` tinyint(1)（0=正常，1=禁用）
 - `wp_base_url`
 - `wp_auth_type`
 - `wp_auth_token` 或 `wp_username`/`wp_password`
@@ -137,7 +137,7 @@
 - `POST /api/site/bind`：管理员手动触发后端向插件注册（用于 URL 变更后重新绑定）
 - `POST /api/site/bind_url`：插件端向系统发起绑定（旧版兼容，保留）
 - `POST /api/site/delete`：管理员软删站点
-- `GET /api/site/list`：站点列表（支持 `keyword` 模糊查询、`site_status`/`demo_site` 筛选、`include_deleted=1` 查询已删站点）
+- `GET /api/site/list`：站点列表（支持 `keyword` 模糊查询、`site_status`/`demo_site` 筛选、`include_deleted=1` 查询已删站点；分页参数 `page` 默认 1，`page_size` 默认 10 上限 100），返回 `{ list, page, page_size, total }`
 
 ### 5.5 翻译
 - `POST /api/proxy/translate`：`{ text, target_lang, source_lang? }`

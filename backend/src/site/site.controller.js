@@ -287,10 +287,10 @@ export class SiteController {
       return { provided: false, value: 0 };
     }
     const normalized = String(input).trim().toLowerCase();
-    if (normalized === '0' || normalized === 'building') {
+    if (normalized === '0' || normalized === 'online') {
       return { provided: true, value: 0 };
     }
-    if (normalized === '1' || normalized === 'online') {
+    if (normalized === '1' || normalized === 'disabled') {
       return { provided: true, value: 1 };
     }
     return { provided: true, value: null };

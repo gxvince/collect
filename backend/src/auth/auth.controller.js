@@ -31,6 +31,13 @@ export class AuthController {
       return { code: 401, data: null, message: '账号或密码错误' };
     }
 
+    if (user.role !== 'admin') {
+      const locked = await this.authService.hasUserDisabledSites(user.id);
+      if (locked) {
+        return { code: 401, data: null, message: '账号已失效，请联系管理员' };
+      }
+    }
+
     const accessToken = this.authService.signAccessToken(user);
     const refreshToken = this.authService.signRefreshToken(user);
     const sites = await this.authService.getUserSites(user);
@@ -73,6 +80,17 @@ export class AuthController {
         return { code: 401, data: null, message: 'refresh token 无效' };
       }
 
+      const tokenUser = await this.authService.findUserById(payload.user_id);
+      if (!tokenUser || tokenUser.is_deleted) {
+        return { code: 401, data: null, message: '账号已失效，请联系管理员' };
+      }
+      if (tokenUser.role !== 'admin') {
+        const locked = await this.authService.hasUserDisabledSites(tokenUser.id);
+        if (locked) {
+          return { code: 401, data: null, message: '账号已失效，请联系管理员' };
+        }
+      }
+
       const accessToken = this.authService.signAccessToken({
         id: payload.user_id,
         role: payload.role,
@@ -100,6 +118,13 @@ export class AuthController {
       const user = await this.authService.findUserById(payload.user_id);
       if (!user || user.is_deleted) {
         return { code: 401, data: null, message: '未登录' };
+      }
+
+      if (user.role !== 'admin') {
+        const locked = await this.authService.hasUserDisabledSites(user.id);
+        if (locked) {
+          return { code: 401, data: null, message: '账号已失效，请联系管理员' };
+        }
       }
 
       const sites = await this.authService.getUserSites(user);
@@ -141,6 +166,13 @@ export class AuthController {
       const user = await this.authService.findUserById(payload.user_id);
       if (!user || user.is_deleted) {
         return { code: 401, data: null, message: '未登录' };
+      }
+
+      if (user.role !== 'admin') {
+        const locked = await this.authService.hasUserDisabledSites(user.id);
+        if (locked) {
+          return { code: 401, data: null, message: '账号已失效，请联系管理员' };
+        }
       }
 
       const fullUser = await this.authService.findUserByUsername(user.username);

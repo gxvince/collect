@@ -63,6 +63,14 @@ export class AuthService {
     return rows;
   }
 
+  async hasUserDisabledSites(userId) {
+    const [rows] = await this.dbPool.query(
+      'SELECT COUNT(*) AS cnt FROM user_sites us INNER JOIN sites s ON s.site_id = us.site_id WHERE us.user_id = ? AND (s.site_status = 1 OR s.is_deleted = 1) LIMIT 1',
+      [userId],
+    );
+    return (rows[0]?.cnt ?? 0) > 0;
+  }
+
   async hasUserSitePageRules(userId, siteId) {
     const [rows] = await this.dbPool.query(
       'SELECT id FROM user_site_pages WHERE user_id = ? AND site_id = ? LIMIT 1',
