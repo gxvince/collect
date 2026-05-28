@@ -111,6 +111,12 @@
     <div class="row">
       <button id="btn-page-config-save-sizes"></button>
     </div>
+    <div class="row">
+      <textarea id="page-config-attach-data"></textarea>
+    </div>
+    <div class="row">
+      <button id="btn-page-config-save-attach-data"></button>
+    </div>
     <div class="note" id="note-media-config"></div>
     <pre id="media-config-output"></pre>
   </div>
@@ -419,8 +425,10 @@
       const pageConfigPageIdEl = document.getElementById('page-config-page-id');
       const pageConfigMaterialsEl = document.getElementById('page-config-materials');
       const pageConfigSizesEl = document.getElementById('page-config-sizes');
+      const pageConfigAttachDataEl = document.getElementById('page-config-attach-data');
       const pageConfigSaveMaterialsBtn = document.getElementById('btn-page-config-save-materials');
       const pageConfigSaveSizesBtn = document.getElementById('btn-page-config-save-sizes');
+      const pageConfigSaveAttachDataBtn = document.getElementById('btn-page-config-save-attach-data');
       const pageConfigGetBtn = document.getElementById('btn-page-config-get');
       const mediaConfigOutput = document.getElementById('media-config-output');
       const userIdEl = document.getElementById('user-id');
@@ -710,6 +718,7 @@
         setText('btn-page-config-get', '查询页面配置');
         setText('btn-page-config-save-materials', '保存素材配置');
         setText('btn-page-config-save-sizes', '保存尺寸配置');
+        setText('btn-page-config-save-attach-data', '保存附加数据');
         if (pageConfigMaterialsEl) {
           pageConfigMaterialsEl.placeholder =
             '[\n  {\n    "id": 1,\n    "demo": "demo67",\n    "page": "home",\n    "url": "http://123.png"\n  }\n]';
@@ -717,6 +726,10 @@
         if (pageConfigSizesEl) {
           pageConfigSizesEl.placeholder =
             '[\n  {\n    "module_id": 1,\n    "width": 1200,\n    "height": 800\n  }\n]';
+        }
+        if (pageConfigAttachDataEl) {
+          pageConfigAttachDataEl.placeholder =
+            '[\n  {\n    "key": "value"\n  }\n]';
         }
 
         setPlaceholder('user-id', '用户ID（可选）');
@@ -1658,6 +1671,55 @@
           });
           const data = await parseJson(res);
           showMediaConfig('保存尺寸配置结果', data, req);
+        } catch (error) {
+          showMediaConfigError('保存失败', error, req);
+        }
+      }
+
+      async function testPageConfigSaveAttachData() {
+        if (!accessToken) {
+          showMediaConfig('保存失败', '请先登录获取 access_token');
+          return;
+        }
+        const siteId = pageConfigSiteIdEl.value.trim();
+        const pageId = pageConfigPageIdEl.value.trim();
+        if (!siteId || !pageId) {
+          showMediaConfig('保存失败', '请填写 site_id 和 page_id');
+          return;
+        }
+        const parsed = parseJsonArrayInput(pageConfigAttachDataEl.value, '附加数据');
+        if (!parsed.ok) {
+          showMediaConfig('保存失败', parsed.message);
+          return;
+        }
+
+        const body = {
+          site_id: siteId,
+          data: {
+            [pageId]: parsed.value,
+          },
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/page_config/save_attach_data',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setMediaConfigLoading('保存附加数据中...', req);
+        try {
+          const res = await fetch('/api/page_config/save_attach_data', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showMediaConfig('保存附加数据结果', data, req);
         } catch (error) {
           showMediaConfigError('保存失败', error, req);
         }
@@ -3527,6 +3589,7 @@
       if (mediaDeleteBtn) mediaDeleteBtn.addEventListener('click', testMediaDelete);
       if (pageConfigSaveMaterialsBtn) pageConfigSaveMaterialsBtn.addEventListener('click', testPageConfigSaveMaterials);
       if (pageConfigSaveSizesBtn) pageConfigSaveSizesBtn.addEventListener('click', testPageConfigSaveSizes);
+      if (pageConfigSaveAttachDataBtn) pageConfigSaveAttachDataBtn.addEventListener('click', testPageConfigSaveAttachData);
       if (pageConfigGetBtn) pageConfigGetBtn.addEventListener('click', testPageConfigGet);
       if (userAddBtn) userAddBtn.addEventListener('click', testUserAdd);
       if (userUpdateBtn) userUpdateBtn.addEventListener('click', testUserUpdate);

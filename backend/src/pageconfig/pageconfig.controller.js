@@ -251,6 +251,53 @@ export class PageConfigController {
     };
   }
 
+  @Post('save_attach_data')
+  async saveAttachData() {
+    const { user, error } = await this.getAuthUser();
+    if (error) {
+      return { code: error.code, data: null, message: error.message };
+    }
+
+    const body = this.request.body || {};
+    const siteId = this.normalizeText(body.site_id);
+    const data = body.data;
+    const dataValidation = this.validateDataMap(data);
+    if (!siteId || !dataValidation.ok) {
+      return { code: 422, data: null, message: '参数错误' };
+    }
+
+    const { error: siteError } = await this.getValidatedSite(user, siteId);
+    if (siteError) {
+      return { code: siteError.code, data: null, message: siteError.message };
+    }
+
+    for (const pageId of dataValidation.pageIds) {
+      const hasPagePermission = await this.checkPagePermission(
+        user,
+        siteId,
+        pageId,
+      );
+      if (!hasPagePermission) {
+        return {
+          code: 403,
+          data: { site_id: siteId, page_id: pageId },
+          message: '无权限访问该页面',
+        };
+      }
+      await this.pageConfigService.upsertAttachData({
+        siteId,
+        pageId,
+        attachData: data[pageId],
+      });
+    }
+
+    return {
+      code: 0,
+      data: { site_id: siteId, page_ids: dataValidation.pageIds },
+      message: '保存成功',
+    };
+  }
+
   @Get('get')
   async get() {
     const { user, error } = await this.getAuthUser();
@@ -288,6 +335,7 @@ export class PageConfigController {
       this.parseJsonValue(item && item.materials_json, []),
     );
     const sizes = this.parseJsonValue(item && item.sizes_json, []);
+    const attachData = this.parseJsonValue(item && item.attach_data_json, []);
 
     return {
       code: 0,
@@ -296,6 +344,7 @@ export class PageConfigController {
         page_id: pageId,
         materials: Array.isArray(materials) ? materials : [],
         sizes: Array.isArray(sizes) ? sizes : [],
+        attach_data: Array.isArray(attachData) ? attachData : [],
       },
       message: '获取成功',
     };
