@@ -172,6 +172,9 @@
       <button id="btn-site-update"></button>
     </div>
     <div class="row">
+      <textarea id="site-metadata"></textarea>
+    </div>
+    <div class="row">
       <input id="site-token" />
       <button id="btn-site-bind"></button>
       <button id="btn-site-rebind"></button>
@@ -456,6 +459,7 @@
       const siteNameEl = document.getElementById('site-name');
       const siteDemoEl = document.getElementById('site-demo');
       const siteStatusEl = document.getElementById('site-status');
+      const siteMetadataEl = document.getElementById('site-metadata');
       const siteTokenEl = document.getElementById('site-token');
       const siteUrlEl = document.getElementById('site-url');
       const siteKeywordEl = document.getElementById('site-keyword');
@@ -756,6 +760,7 @@
         setPlaceholder('site-name', '站点名称');
         setPlaceholder('site-url', '站点URL');
         setPlaceholder('site-demo', '所属Demo（可选）');
+        setPlaceholder('site-metadata', 'metadata JSON（可选，填写 null 可清空）');
         setPlaceholder('site-token', '插件对接凭证（旧绑定用）');
         setPlaceholder('site-keyword', '名称/URL 模糊查询');
         setPlaceholder('site-filter-demo', '所属Demo筛选');
@@ -2183,8 +2188,13 @@
         const siteUrl = siteUrlEl.value.trim();
         const demoSite = siteDemoEl.value.trim();
         const siteStatus = siteStatusEl.value.trim();
+        const metadataResult = parseSiteMetadata(siteMetadataEl.value);
         if (!siteName) {
           showSite('创建失败', '请输入 site_name');
+          return;
+        }
+        if (!metadataResult.valid) {
+          showSite('创建失败', 'metadata 必须是合法 JSON');
           return;
         }
 
@@ -2194,6 +2204,9 @@
           demo_site: demoSite || undefined,
           site_status: siteStatus || undefined,
         };
+        if (metadataResult.provided) {
+          body.metadata = metadataResult.value;
+        }
         const req = buildRequest(
           'POST',
           '/api/site/create',
@@ -2238,12 +2251,24 @@
         const siteUrl = siteUrlEl.value.trim();
         const demoSite = siteDemoEl.value.trim();
         const siteStatus = siteStatusEl.value.trim();
+        const metadataResult = parseSiteMetadata(siteMetadataEl.value);
+        if (!metadataResult.valid) {
+          showSite('更新失败', 'metadata 必须是合法 JSON');
+          return;
+        }
         if (siteName) body.site_name = siteName;
         if (siteUrl) body.site_url = siteUrl;
         if (demoSite) body.demo_site = demoSite;
         if (siteStatus) body.site_status = siteStatus;
+        if (metadataResult.provided) body.metadata = metadataResult.value;
 
-        if (!body.site_name && !body.site_url && !body.demo_site && !body.site_status) {
+        if (
+          !body.site_name &&
+          !body.site_url &&
+          !body.demo_site &&
+          !body.site_status &&
+          body.metadata === undefined
+        ) {
           showSite('更新失败', '请至少填写一个要修改的字段');
           return;
         }
@@ -2427,6 +2452,7 @@
         siteNameEl.value = '';
         siteDemoEl.value = '';
         siteStatusEl.value = '';
+        siteMetadataEl.value = '';
         siteTokenEl.value = '';
         siteUrlEl.value = '';
         siteKeywordEl.value = '';
@@ -2436,6 +2462,18 @@
         siteListPageEl.value = '';
         siteListPageSizeEl.value = '';
         siteOutput.textContent = '已清空输入';
+      }
+
+      function parseSiteMetadata(raw) {
+        const text = raw.trim();
+        if (!text) {
+          return { valid: true, provided: false };
+        }
+        try {
+          return { valid: true, provided: true, value: JSON.parse(text) };
+        } catch (error) {
+          return { valid: false };
+        }
       }
 
       async function testProxyPages() {
