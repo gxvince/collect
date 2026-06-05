@@ -23,7 +23,7 @@ export class SiteService {
 
   async findById(siteId) {
     const [rows] = await this.dbPool.query(
-      'SELECT site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, is_deleted FROM sites WHERE site_id = ? LIMIT 1',
+      'SELECT site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, metadata, is_deleted FROM sites WHERE site_id = ? LIMIT 1',
       [siteId],
     );
     return rows[0] || null;
@@ -31,7 +31,7 @@ export class SiteService {
 
   async findByUrl(siteUrl) {
     const [rows] = await this.dbPool.query(
-      'SELECT site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, is_deleted FROM sites WHERE wp_base_url = ? AND is_deleted = 0 LIMIT 1',
+      'SELECT site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, metadata, is_deleted FROM sites WHERE wp_base_url = ? AND is_deleted = 0 LIMIT 1',
       [siteUrl],
     );
     return rows[0] || null;
@@ -39,7 +39,7 @@ export class SiteService {
 
   async findByToken(pluginToken) {
     const [rows] = await this.dbPool.query(
-      'SELECT site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, is_deleted FROM sites WHERE wp_auth_token = ? AND is_deleted = 0 LIMIT 1',
+      'SELECT site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, metadata, is_deleted FROM sites WHERE wp_auth_token = ? AND is_deleted = 0 LIMIT 1',
       [pluginToken],
     );
     return rows[0] || null;
@@ -53,9 +53,10 @@ export class SiteService {
     authType,
     authToken,
     demoSite,
+    metadata,
   }) {
     await this.dbPool.query(
-      'INSERT INTO sites (site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
+      'INSERT INTO sites (site_id, site_name, site_status, wp_base_url, wp_auth_type, wp_auth_token, demo_site, metadata, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)',
       [
         siteId,
         siteName,
@@ -64,6 +65,7 @@ export class SiteService {
         authType,
         authToken,
         demoSite || null,
+        metadata === undefined ? null : metadata,
       ],
     );
   }
@@ -137,7 +139,7 @@ export class SiteService {
     const total = countRows[0]?.total ?? 0;
 
     const [rows] = await this.dbPool.query(
-      `SELECT site_id, site_name, site_status, demo_site, wp_base_url, wp_auth_type, wp_auth_token, is_deleted, created_at, updated_at FROM sites ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT site_id, site_name, site_status, demo_site, metadata, wp_base_url, wp_auth_type, wp_auth_token, is_deleted, created_at, updated_at FROM sites ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, pageSize, offset],
     );
     return { total, list: rows, page, pageSize };
@@ -160,7 +162,7 @@ export class SiteService {
 
     const andClause = whereSql ? ` AND ${whereSql.replace('WHERE ', '')}` : '';
     const [rows] = await this.dbPool.query(
-      `SELECT site_id, site_name, site_status, demo_site, wp_base_url, wp_auth_type, is_deleted, created_at, updated_at FROM sites WHERE site_id IN (${placeholders})${andClause} ORDER BY created_at DESC`,
+      `SELECT site_id, site_name, site_status, demo_site, metadata, wp_base_url, wp_auth_type, is_deleted, created_at, updated_at FROM sites WHERE site_id IN (${placeholders})${andClause} ORDER BY created_at DESC`,
       [...siteIds, ...params],
     );
     return rows;
@@ -230,6 +232,10 @@ export class SiteService {
     if (fields.siteStatus !== undefined) {
       updates.push('site_status = ?');
       params.push(fields.siteStatus);
+    }
+    if (fields.metadata !== undefined) {
+      updates.push('metadata = ?');
+      params.push(fields.metadata);
     }
 
     if (!updates.length) {

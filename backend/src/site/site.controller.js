@@ -30,10 +30,14 @@ export class SiteController {
     const siteName = (body.site_name || '').trim();
     const demoSite = (body.demo_site || '').trim();
     const siteUrl = this.siteService.normalizeUrl(body.site_url || '');
+    const metadataResult = this.parseMetadata(body.metadata);
     const statusResult = this.parseSiteStatus(body.site_status);
 
     if (!siteName) {
       return { code: 422, data: null, message: '参数错误' };
+    }
+    if (!metadataResult.valid) {
+      return { code: 422, data: null, message: 'metadata 必须是合法 JSON' };
     }
     if (statusResult.provided && statusResult.value === null) {
       return { code: 422, data: null, message: 'site_status 仅支持 0/1' };
@@ -51,6 +55,7 @@ export class SiteController {
       authType: 'api_key',
       authToken: pluginToken,
       demoSite,
+      metadata: metadataResult.value,
     });
 
     let registerResult = null;
@@ -76,6 +81,7 @@ export class SiteController {
         site_id: siteId,
         site_name: siteName,
         demo_site: demoSite || null,
+        metadata: metadataResult.raw,
         site_status: siteStatus,
         plugin_token: pluginToken,
         site_url: siteUrl || null,
@@ -220,6 +226,13 @@ export class SiteController {
       }
       fields.siteStatus = statusResult.value;
     }
+    if (body.metadata !== undefined) {
+      const metadataResult = this.parseMetadata(body.metadata);
+      if (!metadataResult.valid) {
+        return { code: 422, data: null, message: 'metadata 必须是合法 JSON' };
+      }
+      fields.metadata = metadataResult.value;
+    }
 
     if (!Object.keys(fields).length) {
       return { code: 422, data: null, message: '参数错误' };
@@ -294,6 +307,29 @@ export class SiteController {
       return { provided: true, value: 1 };
     }
     return { provided: true, value: null };
+  }
+
+  parseMetadata(input) {
+    if (input === undefined) {
+      return { valid: true, value: undefined, raw: null };
+    }
+    if (input === null || input === '') {
+      return { valid: true, value: null, raw: null };
+    }
+    if (typeof input === 'string') {
+      try {
+        JSON.parse(input);
+        return { valid: true, value: input, raw: input };
+      } catch (error) {
+        return { valid: false };
+      }
+    }
+    try {
+      const value = JSON.stringify(input);
+      return { valid: true, value, raw: input };
+    } catch (error) {
+      return { valid: false };
+    }
   }
 
   getTokenFromHeader() {
