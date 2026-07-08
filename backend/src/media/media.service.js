@@ -12,12 +12,12 @@ export class MediaService {
     const params = [];
 
     if (demo) {
-      clauses.push('demo = ?');
-      params.push(demo);
+      clauses.push('demo LIKE ?');
+      params.push(`%${demo}%`);
     }
     if (pageName) {
-      clauses.push('page = ?');
-      params.push(pageName);
+      clauses.push('page LIKE ?');
+      params.push(`%${pageName}%`);
     }
 
     return {
