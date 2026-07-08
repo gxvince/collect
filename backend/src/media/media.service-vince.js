@@ -12,8 +12,8 @@ export class MediaService {
     const params = [];
 
     if (demo) {
-      clauses.push('(demo LIKE ? OR page LIKE ?)');
-      params.push(`%${demo}%`, `%${demo}%`);
+      clauses.push('demo LIKE ?');
+      params.push(`%${demo}%`);
     }
     if (pageName) {
       clauses.push('page LIKE ?');

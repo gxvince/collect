@@ -65,17 +65,54 @@ describe('MediaService', () => {
 
     expect(dbPool.query).toHaveBeenNthCalledWith(
       1,
-      'SELECT COUNT(*) AS total FROM demo_media_assets WHERE demo = ? AND page = ?',
-      ['demo1', 'landing'],
+      'SELECT COUNT(*) AS total FROM demo_media_assets WHERE (demo LIKE ? OR page LIKE ?) AND page LIKE ?',
+      ['%demo1%', '%demo1%', '%landing%'],
     );
     expect(dbPool.query).toHaveBeenNthCalledWith(
       2,
       `SELECT id, demo, page, url, created_at, updated_at
        FROM demo_media_assets
-       WHERE demo = ? AND page = ?
+       WHERE (demo LIKE ? OR page LIKE ?) AND page LIKE ?
        ORDER BY id DESC
        LIMIT ? OFFSET ?`,
-      ['demo1', 'landing', 50, 0],
+      ['%demo1%', '%demo1%', '%landing%', 50, 0],
+    );
+  });
+
+  it('仅传 demo 时会同时搜索 demo 和 page 列', async () => {
+    const dbPool = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce([[{ total: 2 }]])
+        .mockResolvedValueOnce([
+          [
+            { id: 2, demo: 'demo2', page: 'home', url: 'http://2.png' },
+            { id: 1, demo: 'demo1', page: 'about', url: 'http://1.png' },
+          ],
+        ]),
+    };
+    const service = new MediaService(dbPool);
+
+    await service.listMedia({
+      demo: 'home',
+      pageName: '',
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(dbPool.query).toHaveBeenNthCalledWith(
+      1,
+      'SELECT COUNT(*) AS total FROM demo_media_assets WHERE (demo LIKE ? OR page LIKE ?)',
+      ['%home%', '%home%'],
+    );
+    expect(dbPool.query).toHaveBeenNthCalledWith(
+      2,
+      `SELECT id, demo, page, url, created_at, updated_at
+       FROM demo_media_assets
+       WHERE (demo LIKE ? OR page LIKE ?)
+       ORDER BY id DESC
+       LIMIT ? OFFSET ?`,
+      ['%home%', '%home%', 10, 0],
     );
   });
 });
