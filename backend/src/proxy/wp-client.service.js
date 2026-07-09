@@ -13,6 +13,11 @@ export class WpClientService {
     return Number.isFinite(raw) && raw > 0 ? raw : 15000;
   }
 
+  getUploadTimeoutMs() {
+    const raw = Number(process.env.WP_UPLOAD_TIMEOUT_MS || 60000);
+    return Number.isFinite(raw) && raw > 0 ? raw : 60000;
+  }
+
   buildBaseUrl(site) {
     const base = this.siteService.normalizeUrl(site.wp_base_url || '');
     return `${base}/wp-json/custom-db-api/v1`;
@@ -77,13 +82,13 @@ export class WpClientService {
       method: 'POST',
       headers: finalHeaders,
       body: formData,
-    });
+    }, this.getUploadTimeoutMs());
     if (this.shouldRetryWithFallbackRestRoute(result)) {
       return this.request(fallbackUrl, {
         method: 'POST',
         headers: finalHeaders,
         body: formData,
-      });
+      }, this.getUploadTimeoutMs());
     }
     return result;
   }
@@ -143,9 +148,9 @@ export class WpClientService {
     };
   }
 
-  async request(url, options) {
+  async request(url, options, timeoutMs) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.getTimeoutMs());
+    const timeout = setTimeout(() => controller.abort(), timeoutMs || this.getTimeoutMs());
     try {
       const res = await fetch(url, { ...options, signal: controller.signal });
       const text = await res.text();
