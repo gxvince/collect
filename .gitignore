@@ -17,3 +17,16 @@ _health_dump.html
 # IDE
 .vscode/
 .idea/
+
+#codegraph
+.codegraph
+
+
+#code
+AGENT.md
+AGENTS.md
+CLAUDE.md
+
+#其它
+collect.zip
+custom-api

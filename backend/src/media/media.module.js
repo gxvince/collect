@@ -4,11 +4,13 @@ import { DatabaseModule } from '../database/database.module';
 import { AuthModule } from '../auth/auth.module';
 import { MediaController } from './media.controller';
 import { MediaService } from './media.service';
+import { DemoMediaConfigController } from './demo-media-config.controller';
+import { DemoMediaConfigService } from './demo-media-config.service';
 
 @Module({
   imports: [DatabaseModule, AuthModule],
-  controllers: [MediaController],
-  providers: [MediaService],
+  controllers: [MediaController, DemoMediaConfigController],
+  providers: [MediaService, DemoMediaConfigService],
 })
 export class MediaModule {
   configure(consumer) {

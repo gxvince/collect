@@ -122,6 +122,31 @@
   </div>
 
   <div class="card">
+    <div><strong id="title-demo-config"></strong></div>
+    <div class="row">
+      <input id="dc-demo" placeholder="demo名称" />
+      <input id="dc-imgs" placeholder='imgs JSON [{"id":"板块ID","url":"截图地址"}]' />
+    </div>
+    <div class="row">
+      <input id="dc-sizes" placeholder='sizes JSON [{"id":"图片ID","width":0,"height":0}]' />
+      <input id="dc-blacklist" placeholder="blacklist JSON（URL数组）" />
+    </div>
+    <div class="row">
+      <button id="btn-dc-save"></button>
+      <button id="btn-dc-get"></button>
+      <button id="btn-dc-delete"></button>
+    </div>
+    <div class="row">
+      <input id="dc-list-demo" placeholder="列表查询（名称模糊搜索，可选）" />
+      <input id="dc-list-page" placeholder="页码（默认1）" />
+      <input id="dc-list-page-size" placeholder="每页（默认20）" />
+      <button id="btn-dc-list"></button>
+    </div>
+    <div class="note" id="note-demo-config"></div>
+    <pre id="demo-config-output"></pre>
+  </div>
+
+  <div class="card">
     <div><strong id="title-user"></strong></div>
     <div class="row">
       <input id="user-id" />
@@ -434,6 +459,18 @@
       const pageConfigSaveAttachDataBtn = document.getElementById('btn-page-config-save-attach-data');
       const pageConfigGetBtn = document.getElementById('btn-page-config-get');
       const mediaConfigOutput = document.getElementById('media-config-output');
+      const dcDemoEl = document.getElementById('dc-demo');
+      const dcImgsEl = document.getElementById('dc-imgs');
+      const dcSizesEl = document.getElementById('dc-sizes');
+      const dcBlacklistEl = document.getElementById('dc-blacklist');
+      const dcListDemoEl = document.getElementById('dc-list-demo');
+      const dcListPageEl = document.getElementById('dc-list-page');
+      const dcListPageSizeEl = document.getElementById('dc-list-page-size');
+      const dcSaveBtn = document.getElementById('btn-dc-save');
+      const dcGetBtn = document.getElementById('btn-dc-get');
+      const dcDeleteBtn = document.getElementById('btn-dc-delete');
+      const dcListBtn = document.getElementById('btn-dc-list');
+      const demoConfigOutput = document.getElementById('demo-config-output');
       const userIdEl = document.getElementById('user-id');
       const userUsernameEl = document.getElementById('user-username');
       const userPasswordEl = document.getElementById('user-password');
@@ -666,6 +703,15 @@
         setText('title-debug', '调试');
         setText('title-file', '文件上传与查询');
         setText('title-media-config', 'Demo 素材库与页面配置');
+        setText('title-demo-config', 'Demo 媒体库配置');
+        setText('btn-dc-save', '保存配置');
+        setText('btn-dc-get', '查询配置');
+        setText('btn-dc-delete', '删除配置');
+        setText('btn-dc-list', '查询列表');
+        setText(
+          'note-demo-config',
+          '说明：imgs/sizes/blacklist 均为 JSON 数组，保存时整体覆盖。',
+        );
         setText('title-user', '用户与站点授权');
         setText('title-site', '站点创建与绑定');
         setText('title-site-list', '站点列表');
@@ -1580,6 +1626,176 @@
           showMediaConfig('删除结果', data, req);
         } catch (error) {
           showMediaConfigError('删除失败', error, req);
+        }
+      }
+
+      function showDemoConfig(title, data, req) {
+        if (req) {
+          showWithRequest(demoConfigOutput, title, req, data);
+          return;
+        }
+        demoConfigOutput.textContent = title + '\n' + formatJson(data);
+      }
+
+      function showDemoConfigError(title, error, req) {
+        const message = error && error.message ? error.message : String(error);
+        showDemoConfig(title, { error: message }, req);
+      }
+
+      function setDemoConfigLoading(title, req) {
+        if (req) {
+          setLoadingWithRequest(demoConfigOutput, title, req);
+          return;
+        }
+        demoConfigOutput.textContent = title + '\n' + '处理中...';
+      }
+
+      function parseJsonArrayField(raw) {
+        const text = (raw || '').trim();
+        if (!text) return [];
+        try {
+          const v = JSON.parse(text);
+          return Array.isArray(v) ? v : [];
+        } catch {
+          return [];
+        }
+      }
+
+      async function testDemoConfigSave() {
+        if (!accessToken) {
+          showDemoConfig('保存失败', '请先登录获取 access_token');
+          return;
+        }
+        const demo = dcDemoEl.value.trim();
+        if (!demo) {
+          showDemoConfig('保存失败', '请填写 demo 名称');
+          return;
+        }
+        const body = {
+          demo,
+          imgs: parseJsonArrayField(dcImgsEl.value),
+          sizes: parseJsonArrayField(dcSizesEl.value),
+          blacklist: parseJsonArrayField(dcBlacklistEl.value),
+        };
+        const req = buildRequest(
+          'POST',
+          '/api/media/demo-config/save',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          body,
+        );
+        setDemoConfigLoading('保存配置中...', req);
+        try {
+          const res = await fetch('/api/media/demo-config/save', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          const data = await parseJson(res);
+          showDemoConfig('保存结果', data, req);
+        } catch (error) {
+          showDemoConfigError('保存失败', error, req);
+        }
+      }
+
+      async function testDemoConfigGet() {
+        if (!accessToken) {
+          showDemoConfig('查询失败', '请先登录获取 access_token');
+          return;
+        }
+        const demo = dcDemoEl.value.trim();
+        if (!demo) {
+          showDemoConfig('查询失败', '请填写 demo 名称');
+          return;
+        }
+        const queryUrl = '/api/media/demo-config/get?demo=' + encodeURIComponent(demo);
+        const req = buildRequest(
+          'GET',
+          queryUrl,
+          { Authorization: 'Bearer ' + accessToken },
+        );
+        setDemoConfigLoading('查询中...', req);
+        try {
+          const res = await fetch(queryUrl, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showDemoConfig('查询结果', data, req);
+        } catch (error) {
+          showDemoConfigError('查询失败', error, req);
+        }
+      }
+
+      async function testDemoConfigDelete() {
+        if (!accessToken) {
+          showDemoConfig('删除失败', '请先登录获取 access_token');
+          return;
+        }
+        const demo = dcDemoEl.value.trim();
+        if (!demo) {
+          showDemoConfig('删除失败', '请填写 demo 名称');
+          return;
+        }
+        const req = buildRequest(
+          'POST',
+          '/api/media/demo-config/delete',
+          {
+            Authorization: 'Bearer ' + accessToken,
+            'Content-Type': 'application/json',
+          },
+          { demo },
+        );
+        setDemoConfigLoading('删除中...', req);
+        try {
+          const res = await fetch('/api/media/demo-config/delete', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + accessToken,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ demo }),
+          });
+          const data = await parseJson(res);
+          showDemoConfig('删除结果', data, req);
+        } catch (error) {
+          showDemoConfigError('删除失败', error, req);
+        }
+      }
+
+      async function testDemoConfigList() {
+        if (!accessToken) {
+          showDemoConfig('列表查询失败', '请先登录获取 access_token');
+          return;
+        }
+        const params = new URLSearchParams();
+        const demo = dcListDemoEl.value.trim();
+        const page = dcListPageEl.value.trim();
+        const pageSize = dcListPageSizeEl.value.trim();
+        if (demo) params.set('demo', demo);
+        if (page) params.set('page', page);
+        if (pageSize) params.set('page_size', pageSize);
+        const queryUrl = '/api/media/demo-config/list?' + params.toString();
+        const req = buildRequest(
+          'GET',
+          queryUrl,
+          { Authorization: 'Bearer ' + accessToken },
+        );
+        setDemoConfigLoading('查询列表中...', req);
+        try {
+          const res = await fetch(queryUrl, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + accessToken },
+          });
+          const data = await parseJson(res);
+          showDemoConfig('列表结果', data, req);
+        } catch (error) {
+          showDemoConfigError('查询失败', error, req);
         }
       }
 
@@ -3625,6 +3841,10 @@
       if (mediaSaveFileBtn) mediaSaveFileBtn.addEventListener('click', testMediaSaveFile);
       if (mediaGetBtn) mediaGetBtn.addEventListener('click', testMediaGet);
       if (mediaDeleteBtn) mediaDeleteBtn.addEventListener('click', testMediaDelete);
+      if (dcSaveBtn) dcSaveBtn.addEventListener('click', testDemoConfigSave);
+      if (dcGetBtn) dcGetBtn.addEventListener('click', testDemoConfigGet);
+      if (dcDeleteBtn) dcDeleteBtn.addEventListener('click', testDemoConfigDelete);
+      if (dcListBtn) dcListBtn.addEventListener('click', testDemoConfigList);
       if (pageConfigSaveMaterialsBtn) pageConfigSaveMaterialsBtn.addEventListener('click', testPageConfigSaveMaterials);
       if (pageConfigSaveSizesBtn) pageConfigSaveSizesBtn.addEventListener('click', testPageConfigSaveSizes);
       if (pageConfigSaveAttachDataBtn) pageConfigSaveAttachDataBtn.addEventListener('click', testPageConfigSaveAttachData);

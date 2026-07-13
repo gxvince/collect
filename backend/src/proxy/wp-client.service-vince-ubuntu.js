@@ -148,9 +148,9 @@ export class WpClientService {
     };
   }
 
-  async request(url, options) {
+  async request(url, options, timeoutMs) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.getTimeoutMs());
+    const timeout = setTimeout(() => controller.abort(), timeoutMs || this.getTimeoutMs());
     try {
       const res = await fetch(url, { ...options, signal: controller.signal });
       const text = await res.text();

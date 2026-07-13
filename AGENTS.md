@@ -1,86 +1,45 @@
 # Repository Guidelines
 
+## 项目结构
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+NestJS（JavaScript 模式）后端 + WordPress 插件。需求基线见 `AGENT.md`。
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+- `backend/src/` — 核心代码，按领域拆分：`auth/`、`user/`、`file/`、`site/`、`proxy/`、`media/`、`pageconfig/`、`translate/`、`database/`
+- `backend/test/` — 端到端测试
+- `backend/schema.sql` — 数据库表结构；`backend/migrations/` — 迁移脚本
+- `custom-api-plugin.php`（根目录）— WordPress 插件，所有 WP 对接统一通过此插件
 
-## 1. Think Before Coding
+## 架构要点（非显而易见）
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+- **无 TypeScript**：Babel 转译装饰器语法（`.babelrc` + `@babel/plugin-proposal-decorators`）。不能用 TypeScript 参数装饰器，NestJS 装饰器用法需适配 JS 模式。
+- **入口链**：`backend/index.js` → `@babel/register` → `src/main.js`（`npm run start`）；`nodemon` 开发模式另走 `node index --exec babel-node`。默认端口 3501，可通过 `PORT` 覆盖。
+- **无 ORM，直写 SQL**：Service 层使用 `mysql2/promise` 连接池，通过 NestJS provider token `'DB_POOL'` 注入（见 `database.providers.js`）。新增 Service 需 `@Inject('DB_POOL')` 获取连接池。
+- **`-vince` 后缀文件**：开发变体/备份（如 `main-vince.js`、`auth.service-vince.js`），非活跃代码，不要修改或引用。
+- **权限两层**：角色守卫（admin 全权限）→ 站点授权守卫（user_sites 多对多校验）。普通用户访问站点接口必须校验 `site_id` 归属。
+- **WP 代理**：所有 WordPress 请求通过 `WpClientService` 统一封装（fetch + AbortController 超时 + 鉴权头），插件端点前缀 `/wp-json/custom-db-api/v1/*`。
+- **响应格式**：统一 `{ code, data, message }`，`code=0` 成功；分页参数 `page`/`page_size`，上限 100。
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+## 命令（在 `backend/` 目录执行）
 
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
+```bash
+npm install              # 安装依赖
+npm run start            # babel-node 启动（端口 3501）
+npm run start:dev        # nodemon 热重载（自动 kill 旧端口）
+npm run test             # Jest 单元测试（匹配 src/**/*.spec.js）
+npm run test:e2e         # 端到端测试（test/jest-e2e.json）
+npm run format           # Prettier 格式化
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+运行单个测试：`npx jest --testPathPattern <pattern>`（在 `backend/` 下）。
 
----
+## 编码风格
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
-
-
-
-## 项目结构与模块组织
-本仓库包含一个 NestJS（JavaScript 模式）后端与一个 WordPress 插件。后端位于 `backend/`，核心代码在 `backend/src/`，按领域拆分为 `auth/`、`user/`、`file/`、`site/`、`database/` 等模块；端到端测试在 `backend/test/`；数据库结构在 `backend/schema.sql`，迁移脚本在 `backend/migrations/`。WordPress 侧逻辑集中在根目录的 `custom-api-plugin.php`。后端需求与接口约束请先阅读 `AGENT.md`。
-
-## 构建、测试与本地运行
-在 `backend/` 目录执行命令：`npm install` 安装依赖；`npm run start` 通过 `index.js` 启动服务；`npm run start:dev` 使用 nodemon 热重载；`npm run test` 运行 Jest 单元测试；`npm run test:e2e` 运行端到端测试；`npm run test:cov` 生成覆盖率；`npm run format` 使用 Prettier 统一格式。
-
-## 编码风格与命名规范
-项目使用 JavaScript，不引入 TypeScript。格式化由 `backend/.prettierrc` 管理（单引号、尾逗号），保持 2 空格缩进并运行 `npm run format`。文件命名遵循已有风格，例如 `app.controller.js`、`*.service.js`、`*.spec.js`；模块目录使用简短名词（如 `auth`、`site`）。新增注释需简洁、中文，并避免重复描述代码本身。
-
-## 测试指南
-单元测试放在 `backend/src/**` 下，以 `.spec.js` 结尾；端到端测试放在 `backend/test/`，如 `app.e2e-spec.js`。新增接口或模块时，至少补充一个对应的单测或 e2e 校验，并保证 `npm run test` 可通过。
+JavaScript，2 空格缩进。Prettier 配置（`backend/.prettierrc`）：`singleQuote: true`、`trailingComma: "all"`。文件命名：`*.controller.js`、`*.service.js`、`*.module.js`、`*.spec.js`。注释中文简洁，不重复描述代码本身。
 
 ## 配置与安全
-运行配置使用 `backend/.env`，示例模板在 `backend/.env.example`；不要在代码中硬编码密钥或站点信息。数据库表结构以 `backend/schema.sql` 为准，变更时同步更新示例配置与必要的迁移脚本。
 
-## 提交与合并请求
-当前目录未发现 `.git`，无法总结既有提交信息规范。建议提交信息使用简短动词开头（如 `feat`、`fix`、`chore`），并在合并请求中说明变更范围、关联需求/问题、以及必要的接口或截图验证。涉及 `custom-api-plugin.php` 的修改需说明对 WordPress 端兼容性的影响。
+运行配置用 `backend/.env`，示例模板 `backend/.env.example`。不要硬编码密钥或站点信息。数据库表结构以 `backend/schema.sql` 为准，变更时同步 `.env.example` 与迁移脚本。
+
+## 提交
+
+提交信息用简短动词前缀（`feat`、`fix`、`chore`）。涉及 `custom-api-plugin.php` 的修改需说明对 WordPress 端兼容性的影响。
