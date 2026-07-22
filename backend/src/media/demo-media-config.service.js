@@ -32,19 +32,35 @@ export class DemoMediaConfigService {
 
   async save({ demo, imgs, sizes, blacklist }) {
     const existing = await this.findByDemo(demo);
-    const imgsJson = JSON.stringify(imgs);
-    const sizesJson = JSON.stringify(sizes);
-    const blacklistJson = JSON.stringify(blacklist);
 
     if (existing) {
-      await this.dbPool.query(
-        'UPDATE demo_media_config SET imgs = ?, sizes = ?, blacklist = ?, updated_at = CURRENT_TIMESTAMP WHERE demo = ?',
-        [imgsJson, sizesJson, blacklistJson, demo],
-      );
+      const updates = [];
+      const params = [];
+      for (const [field, value] of Object.entries({
+        imgs,
+        sizes,
+        blacklist,
+      })) {
+        if (value !== undefined) {
+          updates.push(`${field} = ?`);
+          params.push(JSON.stringify(value));
+        }
+      }
+      if (updates.length) {
+        await this.dbPool.query(
+          `UPDATE demo_media_config SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE demo = ?`,
+          params.concat(demo),
+        );
+      }
     } else {
       await this.dbPool.query(
         'INSERT INTO demo_media_config (demo, imgs, sizes, blacklist) VALUES (?, ?, ?, ?)',
-        [demo, imgsJson, sizesJson, blacklistJson],
+        [
+          demo,
+          JSON.stringify(imgs || []),
+          JSON.stringify(sizes || []),
+          JSON.stringify(blacklist || []),
+        ],
       );
     }
     return this.findByDemo(demo);

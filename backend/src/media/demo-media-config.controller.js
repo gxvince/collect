@@ -113,29 +113,22 @@ export class DemoMediaConfigController {
     }
 
     const existing = await this.configService.findByDemo(demo);
-    const imgs = Array.isArray(body.imgs)
-      ? body.imgs
-      : this.parseJsonField(body.imgs, existing ? [] : []);
-    const sizes = Array.isArray(body.sizes)
-      ? body.sizes
-      : this.parseJsonField(body.sizes, existing ? [] : []);
-    const blacklist = Array.isArray(body.blacklist)
-      ? body.blacklist
-      : this.parseJsonField(body.blacklist, existing ? [] : []);
-
-    if (
-      !Array.isArray(imgs) ||
-      !Array.isArray(sizes) ||
-      !Array.isArray(blacklist)
-    ) {
-      return { code: 422, data: null, message: '参数错误' };
+    const fields = {};
+    for (const field of ['imgs', 'sizes', 'blacklist']) {
+      if (Object.prototype.hasOwnProperty.call(body, field)) {
+        const value = this.parseJsonField(body[field], null);
+        if (!Array.isArray(value)) {
+          return { code: 422, data: null, message: '参数错误' };
+        }
+        fields[field] = value;
+      } else if (!existing) {
+        fields[field] = [];
+      }
     }
 
     const item = await this.configService.save({
       demo,
-      imgs,
-      sizes,
-      blacklist,
+      ...fields,
     });
     return {
       code: 0,
