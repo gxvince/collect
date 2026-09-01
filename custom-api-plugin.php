@@ -3,7 +3,7 @@
 Plugin Name: System API
 Plugin URI: https://web.ehaitech.com/
 Description: [Yeehai]
-Version: 1.1.3
+Version: 1.1.4
 Author: Yeehai
 License: GPL2
 */
@@ -1604,12 +1604,97 @@ function custom_db_api_log_elementor_update($message, $context = []) {
     error_log($line);
 }
 
+
+function custom_db_api_finalize_elementor_update($post_id, $encoded_meta_value, $sync_editor = true) {
+    $result = [
+        'synced_autosave_ids' => [],
+        'post_css_deleted' => false,
+        'elementor_cache_cleared' => false,
+        'post_touched' => false,
+    ];
+
+    update_post_meta($post_id, '_elementor_edit_mode', 'builder');
+    if (defined('ELEMENTOR_VERSION') && ELEMENTOR_VERSION) {
+        update_post_meta($post_id, '_elementor_version', ELEMENTOR_VERSION);
+    }
+
+    if ($sync_editor && function_exists('wp_get_post_revisions')) {
+        $revisions = wp_get_post_revisions($post_id, ['check_enabled' => false]);
+        if (is_array($revisions)) {
+            foreach ($revisions as $revision) {
+                $revision_id = isset($revision->ID) ? absint($revision->ID) : 0;
+                $revision_name = isset($revision->post_name) ? (string) $revision->post_name : '';
+                if ($revision_id <= 0 || stripos($revision_name, 'autosave') === false) {
+                    continue;
+                }
+                update_post_meta($revision_id, '_elementor_data', $encoded_meta_value);
+                update_post_meta($revision_id, '_elementor_edit_mode', 'builder');
+                if (defined('ELEMENTOR_VERSION') && ELEMENTOR_VERSION) {
+                    update_post_meta($revision_id, '_elementor_version', ELEMENTOR_VERSION);
+                }
+                clean_post_cache($revision_id);
+                if (function_exists('wp_cache_delete')) {
+                    wp_cache_delete($revision_id, 'post_meta');
+                }
+                $result['synced_autosave_ids'][] = $revision_id;
+            }
+        }
+    }
+
+    clean_post_cache($post_id);
+    if (function_exists('wp_cache_delete')) {
+        wp_cache_delete($post_id, 'post_meta');
+    }
+
+    if (class_exists('\\Elementor\\Core\\Files\\CSS\\Post')) {
+        try {
+            $css_file = new \Elementor\Core\Files\CSS\Post($post_id);
+            if (method_exists($css_file, 'delete')) {
+                $css_file->delete();
+                $result['post_css_deleted'] = true;
+            }
+        } catch (Throwable $e) {
+            custom_db_api_log_elementor_update('删除 Elementor 单页 CSS 失败', [
+                'post_id' => $post_id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    if (class_exists('\\Elementor\\Plugin')) {
+        try {
+            $elementor = \Elementor\Plugin::$instance;
+            if ($elementor && isset($elementor->files_manager) && method_exists($elementor->files_manager, 'clear_cache')) {
+                $elementor->files_manager->clear_cache();
+                $result['elementor_cache_cleared'] = true;
+            }
+        } catch (Throwable $e) {
+            custom_db_api_log_elementor_update('清理 Elementor 缓存失败', [
+                'post_id' => $post_id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    if (function_exists('wp_update_post')) {
+        $touched = wp_update_post([
+            'ID' => $post_id,
+            'post_modified' => current_time('mysql'),
+            'post_modified_gmt' => current_time('mysql', true),
+        ], true);
+        $result['post_touched'] = !is_wp_error($touched);
+    }
+
+    return $result;
+}
+
 // 更新 Elementor 数据
 function up_elementor_data($request) {
     try {
         $res = custom_db_api_get_elementor_update_payload($request);
         $post_id = isset($res['post_id']) ? absint($res['post_id']) : 0;
         $meta_value = $res['meta_value'] ?? '';
+        $sync_editor = custom_db_api_to_bool($res['sync_editor'] ?? true, true);
 
         custom_db_api_log_elementor_update('请求进入', [
             'post_id' => $post_id,
@@ -1627,6 +1712,25 @@ function up_elementor_data($request) {
                 'code' => 400,
                 'message' => '缺少重要参数'
             ], 400);
+        }
+
+        if (function_exists('wp_is_post_revision')) {
+            $revision_parent = wp_is_post_revision($post_id);
+            if ($revision_parent) {
+                $post_id = absint($revision_parent);
+            }
+        }
+        if (function_exists('wp_is_post_autosave')) {
+            $autosave_parent = wp_is_post_autosave($post_id);
+            if ($autosave_parent) {
+                $post_id = absint($autosave_parent);
+            }
+        }
+        if (!get_post($post_id)) {
+            return new WP_REST_Response([
+                'code' => 404,
+                'message' => '页面不存在'
+            ], 404);
         }
 
         if (is_array($meta_value)) {
@@ -1659,40 +1763,44 @@ function up_elementor_data($request) {
         $current = get_post_meta($post_id, '_elementor_data', true);
 
         custom_db_api_log_elementor_update('准备写入', [
-            'encoded_length' => strlen($encoded),
+            'encoded_length' => strlen($encoded_json),
             'current_length' => strlen((string) $current),
             'decoded_count' => is_array($decoded) ? count($decoded) : null,
+            'sync_editor' => $sync_editor,
         ]);
 
-        if ((string) $current === (string) $encoded) {
-            custom_db_api_log_elementor_update('未做任何修改操作', [
-                'post_id' => $post_id,
-            ]);
-            return new WP_REST_Response([
-                'code' => 0,
-                'message' => '未做任何修改操作'
-            ], 200);
+        $changed = false;
+        if ((string) $current !== (string) $encoded_json) {
+            $updated = update_post_meta($post_id, '_elementor_data', $encoded);
+            if ($updated === false) {
+                custom_db_api_log_elementor_update('update_post_meta 返回 false', [
+                    'post_id' => $post_id,
+                    'encoded_length' => strlen($encoded_json),
+                ]);
+                return new WP_REST_Response([
+                    'code' => 400,
+                    'message' => '更新失败'
+                ], 400);
+            }
+            $changed = true;
         }
 
-        $updated = update_post_meta($post_id, '_elementor_data', $encoded);
-        if ($updated === false) {
-            custom_db_api_log_elementor_update('update_post_meta 返回 false', [
-                'post_id' => $post_id,
-                'encoded_length' => strlen($encoded),
-            ]);
-            return new WP_REST_Response([
-                'code' => 400,
-                'message' => '更新失败'
-            ], 400);
-        }
+        $finalize_result = custom_db_api_finalize_elementor_update($post_id, $encoded, $sync_editor);
 
-        custom_db_api_log_elementor_update('更新成功', [
+        custom_db_api_log_elementor_update($changed ? '更新成功' : '已同步编辑器状态', [
             'post_id' => $post_id,
-            'result' => $updated,
+            'changed' => $changed,
+            'finalize' => $finalize_result,
         ]);
         return new WP_REST_Response([
             'code' => 0,
-            'message' => '更新成功'
+            'message' => $changed ? '更新成功' : '已同步编辑器状态',
+            'data' => [
+                'post_id' => $post_id,
+                'changed' => $changed,
+                'sync_editor' => $sync_editor,
+                'finalize' => $finalize_result,
+            ]
         ], 200);
     } catch (Throwable $e) {
         custom_db_api_log_elementor_update('捕获到异常', [
