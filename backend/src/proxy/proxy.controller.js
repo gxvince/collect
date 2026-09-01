@@ -58,6 +58,37 @@ export class ProxyController {
     return this.authService.canUserAccessPage(user, siteId, pageId);
   }
 
+  toProxyResponse(error) {
+    return { code: error.code, data: null, message: error.message };
+  }
+
+  async getProxyContext(siteId, pageId = 0, includePageScope = false) {
+    const auth = await this.getAuthUser();
+    if (auth.error) {
+      return { error: this.toProxyResponse(auth.error) };
+    }
+    if (!siteId) {
+      return { error: { code: 422, data: null, message: '参数错误' } };
+    }
+    if (!(await this.checkSitePermission(auth.user, siteId))) {
+      return { error: { code: 403, data: null, message: '无权限' } };
+    }
+    if (
+      pageId &&
+      !(await this.checkPagePermission(auth.user, siteId, pageId))
+    ) {
+      return { error: this.buildPagePermissionDenied(siteId, pageId) };
+    }
+    const target = await this.getSiteForProxy(siteId);
+    if (target.error) {
+      return { error: this.toProxyResponse(target.error) };
+    }
+    const pageScope = includePageScope
+      ? await this.authService.getUserPagePermissionScope(auth.user, siteId)
+      : null;
+    return { user: auth.user, site: target.site, pageScope };
+  }
+
   buildPagePermissionDenied(siteId, pageId) {
     return {
       code: 403,
@@ -151,29 +182,15 @@ export class ProxyController {
 
   @Get('get_pages')
   async getPages() {
-    const { user, error } = await this.getAuthUser();
-    if (error) {
-      return { code: error.code, data: null, message: error.message };
-    }
-
     const query = this.request.query || {};
     const siteId = query.site_id ? String(query.site_id).trim() : '';
-    if (!siteId) {
-      return { code: 422, data: null, message: '参数错误' };
-    }
-
-    const hasPermission = await this.checkSitePermission(user, siteId);
-    if (!hasPermission) {
-      return { code: 403, data: null, message: '无权限' };
-    }
-    const pageScope = await this.authService.getUserPagePermissionScope(
-      user,
+    const { site, pageScope, error } = await this.getProxyContext(
       siteId,
+      0,
+      true,
     );
-
-    const { site, error: siteError } = await this.getSiteForProxy(siteId);
-    if (siteError) {
-      return { code: siteError.code, data: null, message: siteError.message };
+    if (error) {
+      return error;
     }
 
     const result = await this.wpClientService.requestJson(
@@ -198,11 +215,6 @@ export class ProxyController {
 
   @Get('elementor_data/:id')
   async getElementorData() {
-    const { user, error } = await this.getAuthUser();
-    if (error) {
-      return { code: error.code, data: null, message: error.message };
-    }
-
     const params = this.request.params || {};
     const query = this.request.query || {};
     const siteId = query.site_id ? String(query.site_id).trim() : '';
@@ -210,23 +222,9 @@ export class ProxyController {
     if (!siteId || !Number.isFinite(postId) || postId <= 0) {
       return { code: 422, data: null, message: '参数错误' };
     }
-
-    const hasPermission = await this.checkSitePermission(user, siteId);
-    if (!hasPermission) {
-      return { code: 403, data: null, message: '无权限' };
-    }
-    const hasPagePermission = await this.checkPagePermission(
-      user,
-      siteId,
-      postId,
-    );
-    if (!hasPagePermission) {
-      return this.buildPagePermissionDenied(siteId, postId);
-    }
-
-    const { site, error: siteError } = await this.getSiteForProxy(siteId);
-    if (siteError) {
-      return { code: siteError.code, data: null, message: siteError.message };
+    const { site, error } = await this.getProxyContext(siteId, postId);
+    if (error) {
+      return error;
     }
 
     const result = await this.wpClientService.requestJson(
@@ -247,11 +245,6 @@ export class ProxyController {
 
   @Get('elementor_data_json/:id')
   async getElementorDataJson() {
-    const { user, error } = await this.getAuthUser();
-    if (error) {
-      return { code: error.code, data: null, message: error.message };
-    }
-
     const params = this.request.params || {};
     const query = this.request.query || {};
     const siteId = query.site_id ? String(query.site_id).trim() : '';
@@ -259,23 +252,9 @@ export class ProxyController {
     if (!siteId || !Number.isFinite(postId) || postId <= 0) {
       return { code: 422, data: null, message: '参数错误' };
     }
-
-    const hasPermission = await this.checkSitePermission(user, siteId);
-    if (!hasPermission) {
-      return { code: 403, data: null, message: '无权限' };
-    }
-    const hasPagePermission = await this.checkPagePermission(
-      user,
-      siteId,
-      postId,
-    );
-    if (!hasPagePermission) {
-      return this.buildPagePermissionDenied(siteId, postId);
-    }
-
-    const { site, error: siteError } = await this.getSiteForProxy(siteId);
-    if (siteError) {
-      return { code: siteError.code, data: null, message: siteError.message };
+    const { site, error } = await this.getProxyContext(siteId, postId);
+    if (error) {
+      return error;
     }
 
     const result = await this.wpClientService.requestJson(
@@ -530,7 +509,9 @@ export class ProxyController {
     console.log('[proxy.update_elementor_data] first request', {
       siteId,
       postId,
-      metaType: Array.isArray(metaValue.value) ? 'array' : typeof metaValue.value,
+      metaType: Array.isArray(metaValue.value)
+        ? 'array'
+        : typeof metaValue.value,
       bytes: requestBodyBytes,
     });
 
@@ -1370,29 +1351,15 @@ export class ProxyController {
 
   @Get('news')
   async getNews() {
-    const { user, error } = await this.getAuthUser();
-    if (error) {
-      return { code: error.code, data: null, message: error.message };
-    }
-
     const query = this.request.query || {};
     const siteId = query.site_id ? String(query.site_id).trim() : '';
     const id = query.id ? Number(query.id) : 0;
     if (!siteId || !Number.isFinite(id) || id <= 0) {
       return { code: 422, data: null, message: '参数错误' };
     }
-
-    const hasPermission = await this.checkSitePermission(user, siteId);
-    if (!hasPermission) {
-      return { code: 403, data: null, message: '无权限' };
-    }
-    const hasPagePermission = await this.checkPagePermission(user, siteId, id);
-    if (!hasPagePermission) {
-      return this.buildPagePermissionDenied(siteId, id);
-    }
-    const { site, error: siteError } = await this.getSiteForProxy(siteId);
-    if (siteError) {
-      return { code: siteError.code, data: null, message: siteError.message };
+    const { site, error } = await this.getProxyContext(siteId, id);
+    if (error) {
+      return error;
     }
 
     const result = await this.wpClientService.requestJson(
@@ -1413,28 +1380,18 @@ export class ProxyController {
 
   @Get('news_list')
   async getNewsList() {
-    const { user, error } = await this.getAuthUser();
-    if (error) {
-      return { code: error.code, data: null, message: error.message };
-    }
-
     const query = this.request.query || {};
     const siteId = query.site_id ? String(query.site_id).trim() : '';
     if (!siteId) {
       return { code: 422, data: null, message: '参数错误' };
     }
-
-    const hasPermission = await this.checkSitePermission(user, siteId);
-    if (!hasPermission) {
-      return { code: 403, data: null, message: '无权限' };
-    }
-    const pageScope = await this.authService.getUserPagePermissionScope(
-      user,
+    const { site, pageScope, error } = await this.getProxyContext(
       siteId,
+      0,
+      true,
     );
-    const { site, error: siteError } = await this.getSiteForProxy(siteId);
-    if (siteError) {
-      return { code: siteError.code, data: null, message: siteError.message };
+    if (error) {
+      return error;
     }
 
     const page = query.page ? Number(query.page) : 1;
