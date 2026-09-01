@@ -1,6 +1,8 @@
 import { TranslateController } from './translate.controller';
 
 describe('TranslateController', () => {
+  const admin = { id: 1, role: 'admin', is_deleted: 0 };
+
   it('returns 401 when not logged in', async () => {
     const request = {
       body: { text: 'hello', target_language: 'zh' },
@@ -28,7 +30,7 @@ describe('TranslateController', () => {
     };
     const authService = {
       verifyAccessToken: jest.fn().mockResolvedValue({ user_id: 1 }),
-      findUserById: jest.fn().mockResolvedValue({ id: 1, is_deleted: 0 }),
+      findUserById: jest.fn().mockResolvedValue(admin),
     };
     const service = {
       checkConfig: jest.fn().mockReturnValue({ ok: true }),
@@ -49,7 +51,7 @@ describe('TranslateController', () => {
     };
     const authService = {
       verifyAccessToken: jest.fn().mockResolvedValue({ user_id: 1 }),
-      findUserById: jest.fn().mockResolvedValue({ id: 1, is_deleted: 0 }),
+      findUserById: jest.fn().mockResolvedValue(admin),
     };
     const service = {
       checkConfig: jest
@@ -72,7 +74,7 @@ describe('TranslateController', () => {
     };
     const authService = {
       verifyAccessToken: jest.fn().mockResolvedValue({ user_id: 1 }),
-      findUserById: jest.fn().mockResolvedValue({ id: 1, is_deleted: 0 }),
+      findUserById: jest.fn().mockResolvedValue(admin),
     };
     const service = {
       checkConfig: jest.fn().mockReturnValue({ ok: true }),
@@ -93,7 +95,7 @@ describe('TranslateController', () => {
     };
     const authService = {
       verifyAccessToken: jest.fn().mockResolvedValue({ user_id: 1 }),
-      findUserById: jest.fn().mockResolvedValue({ id: 1, is_deleted: 0 }),
+      findUserById: jest.fn().mockResolvedValue(admin),
     };
     const service = {
       checkConfig: jest.fn().mockReturnValue({ ok: true }),
@@ -117,7 +119,7 @@ describe('TranslateController', () => {
     };
     const authService = {
       verifyAccessToken: jest.fn().mockResolvedValue({ user_id: 1 }),
-      findUserById: jest.fn().mockResolvedValue({ id: 1, is_deleted: 0 }),
+      findUserById: jest.fn().mockResolvedValue(admin),
     };
     const service = {
       checkConfig: jest.fn().mockReturnValue({ ok: true }),
