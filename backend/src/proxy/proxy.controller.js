@@ -180,6 +180,20 @@ export class ProxyController {
       .slice(0, 280);
   }
 
+  async requestProxy(site, path, options = {}, errorPath = path) {
+    const result = options.form
+      ? await this.wpClientService.requestForm(
+          site,
+          path,
+          options.form,
+          options.headers,
+        )
+      : await this.wpClientService.requestJson(site, path, options);
+    return result.ok
+      ? { result }
+      : { error: this.wrapWpError(result, errorPath) };
+  }
+
   @Get('get_pages')
   async getPages() {
     const query = this.request.query || {};
@@ -193,15 +207,15 @@ export class ProxyController {
       return error;
     }
 
-    const result = await this.wpClientService.requestJson(
+    const { result, error: requestError } = await this.requestProxy(
       site,
       '/publish_pages',
       {
         method: 'GET',
       },
     );
-    if (!result.ok) {
-      return this.wrapWpError(result);
+    if (requestError) {
+      return requestError;
     }
     const originalList = result.data.data || [];
     const filteredList = this.filterListByPageScope(originalList, pageScope);
@@ -227,13 +241,13 @@ export class ProxyController {
       return error;
     }
 
-    const result = await this.wpClientService.requestJson(
+    const { result, error: requestError } = await this.requestProxy(
       site,
       `/elementor_data?id=${encodeURIComponent(postId)}`,
       { method: 'GET' },
     );
-    if (!result.ok) {
-      return this.wrapWpError(result);
+    if (requestError) {
+      return requestError;
     }
 
     return {
@@ -257,13 +271,13 @@ export class ProxyController {
       return error;
     }
 
-    const result = await this.wpClientService.requestJson(
+    const { result, error: requestError } = await this.requestProxy(
       site,
       `/elementor_data_json?id=${encodeURIComponent(postId)}`,
       { method: 'GET' },
     );
-    if (!result.ok) {
-      return this.wrapWpError(result);
+    if (requestError) {
+      return requestError;
     }
 
     return {
@@ -1362,13 +1376,13 @@ export class ProxyController {
       return error;
     }
 
-    const result = await this.wpClientService.requestJson(
+    const { result, error: requestError } = await this.requestProxy(
       site,
       `/news?id=${encodeURIComponent(id)}`,
       { method: 'GET' },
     );
-    if (!result.ok) {
-      return this.wrapWpError(result, '/news');
+    if (requestError) {
+      return requestError;
     }
 
     return {
@@ -1412,11 +1426,16 @@ export class ProxyController {
       params.set('status', status);
     }
     const path = `/news_list${params.toString() ? `?${params.toString()}` : ''}`;
-    const result = await this.wpClientService.requestJson(site, path, {
-      method: 'GET',
-    });
-    if (!result.ok) {
-      return this.wrapWpError(result, '/news_list');
+    const { result, error: requestError } = await this.requestProxy(
+      site,
+      path,
+      {
+        method: 'GET',
+      },
+      '/news_list',
+    );
+    if (requestError) {
+      return requestError;
     }
     const payload = result.data.data || {
       list: [],
