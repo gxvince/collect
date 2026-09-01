@@ -255,7 +255,7 @@
 - 已实现文件上传与绑定接口：`/api/file/upload`、`/api/file/get`（含权限校验与分页）。
 - 已实现 Demo 素材库与页面配置接口：`/api/media/save`、`/api/media/get`、`/api/page_config/save_materials`、`/api/page_config/save_sizes`、`/api/page_config/get`。
 - 已实现站点创建与绑定接口：`/api/site/create`、`/api/site/bind_url`、`/api/site/delete`、`/api/site/list`（支持模糊查询与筛选）。
-- `/health/view` 已补充用户、文件与站点的调试入口（含筛选与软删查询）。
+- `/health/view` 提供健康状态、登录与通用请求器，可调试 JSON、FormData 和文件接口。
 
 ## 17. 变更记录
 - 初始版本：由项目负责人确认后生效。
@@ -288,6 +288,7 @@
 - 2026-01-05：中文乱码原因与修复：原因多为 UTF-8 内容被非 UTF-8（如 ANSI/Latin-1）保存或显示导致；修复为统一以 UTF-8（无 BOM）读写并避免翻译工具改写引号/编码。预防：编辑器固定 UTF-8、禁止自动转码、翻译后做编码与语法校验。
 - 2026-01-05：新增 WP 代理模块，统一封装插件 API 请求、鉴权与超时处理，并提供 `/api/proxy/*` 对接入口；影响：开始对接 WordPress 插件接口。
 - 2026-05-15：新增一键注册机制。插件端新增 `/register` 端点（REGISTER_KEY 鉴权），后端 `create` 支持填入 URL 自动注册、新增 `/api/site/update` 和 `/api/site/bind`；Demo 素材库新增 `/api/media/delete` 硬删除接口。影响：站点对接流程从双向手动简化为后端单向推送，插件设置页保留但非必需。
+- 2026-09-01：`/health/view` 将各接口专用表单收敛为健康状态、登录和通用请求器；影响：保留 JSON、FormData 与文件调试能力，减少页面维护成本。
 
 
 
