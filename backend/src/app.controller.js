@@ -2,6 +2,7 @@ import { Controller, Dependencies, Get, Header } from '@nestjs/common';
 import { AppService } from './app.service';
 import fs from 'fs';
 import path from 'path';
+import { apiCatalog } from './health-api-catalog';
 
 @Controller()
 @Dependencies(AppService, 'DB_POOL')
@@ -134,6 +135,9 @@ export class AppController {
   async getHealthView() {
     const templatePath = path.join(__dirname, 'health.view.html');
     const template = fs.readFileSync(templatePath, 'utf8');
-    return template;
+    return template.replace(
+      '__API_CATALOG__',
+      () => JSON.stringify(apiCatalog).replace(/</g, '\\u003c'),
+    );
   }
 }

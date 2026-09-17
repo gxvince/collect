@@ -7,13 +7,22 @@
     <!-- prettier-ignore -->
     <style>
       :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-      body { max-width: 960px; margin: 0 auto; padding: 24px; }
+      body { max-width: 1280px; margin: 0 auto; padding: 24px; }
       section { margin: 16px 0; padding: 16px; border: 1px solid #8886; border-radius: 8px; }
       form, .row, label { display: grid; gap: 10px; }
       .row { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
       input, select, textarea, button { box-sizing: border-box; width: 100%; padding: 8px; font: inherit; }
       textarea { min-height: 120px; font-family: ui-monospace, monospace; }
       pre { overflow: auto; padding: 12px; background: #8882; border-radius: 6px; white-space: pre-wrap; }
+      .catalog-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 20px; }
+      #endpoint-list { max-height: 560px; overflow: auto; }
+      #endpoint-list button { text-align: left; margin: 3px 0; overflow-wrap: anywhere; cursor: pointer; }
+      #endpoint-list button[aria-pressed="true"] { outline: 2px solid #3478d4; }
+      code { overflow-wrap: anywhere; }
+      .hint { opacity: .8; font-size: .9rem; }
+      button { cursor: pointer; }
+      button:disabled { cursor: wait; opacity: .6; }
+      @media (max-width: 760px) { .catalog-layout { grid-template-columns: 1fr; } body { padding: 12px; } #endpoint-list { max-height: 280px; } }
       .ok { color: #16803c; }
       .bad { color: #c62828; }
     </style>
@@ -47,8 +56,47 @@
       <p id="login-status">未登录</p>
     </section>
 
+    <section aria-labelledby="catalog-title">
+      <h2 id="catalog-title">全部接口</h2>
+      <p class="hint">
+        按模块浏览或搜索接口，选择后载入示例。示例中的站点和 ID
+        需替换为实际测试数据；点击“发送请求”才会执行。
+      </p>
+      <div class="row">
+        <label
+          >搜索接口<input
+            id="api-search"
+            type="search"
+            placeholder="接口名称、路径或参数"
+        /></label>
+        <label
+          >模块<select id="api-group">
+            <option value="">全部模块</option>
+          </select></label
+        >
+      </div>
+      <p id="api-count" aria-live="polite"></p>
+      <div class="catalog-layout">
+        <nav id="endpoint-list" aria-label="接口目录"></nav>
+        <div>
+          <h3 id="endpoint-title">请选择接口</h3>
+          <p><code id="endpoint-route"></code></p>
+          <p id="endpoint-auth"></p>
+          <p id="endpoint-description"></p>
+          <label>请求示例<select id="example-select"></select></label>
+          <pre id="endpoint-example"></pre>
+          <button id="load-example" type="button">
+            重新载入示例到下方请求器
+          </button>
+        </div>
+      </div>
+    </section>
+
     <section aria-labelledby="request-title">
-      <h2 id="request-title">通用 API 请求器</h2>
+      <h2 id="request-title">编辑并测试接口</h2>
+      <p id="request-help" class="hint">
+        登录后自动携带令牌。所有请求仅发送至当前服务。
+      </p>
       <form id="request-form">
         <div class="row">
           <label
@@ -68,6 +116,12 @@
             </select></label
           >
         </div>
+        <div class="row">
+          <label
+            >路径参数（JSON 对象）<textarea id="path-params">{}</textarea>
+          </label>
+          <label>查询参数（JSON 对象）<textarea id="query">{}</textarea></label>
+        </div>
         <label
           >JSON 请求体或 FormData 字段对象<textarea id="body">{}</textarea>
         </label>
@@ -75,7 +129,7 @@
           <label>文件字段名<input id="file-field" value="file" /></label>
           <label>单文件<input id="file" type="file" /></label>
         </div>
-        <button type="submit">发送请求</button>
+        <button id="send-request" type="submit">发送请求</button>
       </form>
       <h3>请求摘要</h3>
       <pre id="request-summary">尚未发送请求</pre>
@@ -83,9 +137,137 @@
       <pre id="response-output">尚无响应</pre>
     </section>
 
+    <script id="api-catalog" type="application/json">
+      __API_CATALOG__
+    </script>
     <script>
       let accessToken = '';
+      let refreshToken = '';
+      let sending = false;
       const byId = (id) => document.getElementById(id);
+      const apiCatalog = JSON.parse(byId('api-catalog').textContent);
+      let selectedEndpoint = 0;
+
+      function renderCatalog() {
+        const search = byId('api-search').value.trim().toLowerCase();
+        const group = byId('api-group').value;
+        const nodes = [];
+        let lastGroup = '';
+        let count = 0;
+        apiCatalog.forEach((endpoint, index) => {
+          if (group && endpoint.group !== group) return;
+          if (
+            !`${endpoint.title} ${endpoint.path} ${endpoint.method} ${endpoint.description}`
+              .toLowerCase()
+              .includes(search)
+          )
+            return;
+          if (lastGroup !== endpoint.group) {
+            const heading = document.createElement('h3');
+            heading.textContent = endpoint.group;
+            nodes.push(heading);
+            lastGroup = endpoint.group;
+          }
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = `${endpoint.method} ${endpoint.path} · ${endpoint.title}`;
+          button.setAttribute(
+            'aria-pressed',
+            String(index === selectedEndpoint),
+          );
+          button.addEventListener('click', () => selectEndpoint(index));
+          nodes.push(button);
+          count++;
+        });
+        byId('endpoint-list').replaceChildren(...nodes);
+        byId('api-count').textContent =
+          `显示 ${count} / ${apiCatalog.length} 个接口`;
+      }
+
+      function selectEndpoint(index) {
+        selectedEndpoint = index;
+        const endpoint = apiCatalog[index];
+        show('endpoint-title', endpoint.title);
+        show('endpoint-route', `${endpoint.method} ${endpoint.path}`);
+        show('endpoint-auth', `权限：${endpoint.auth}`);
+        show('endpoint-description', endpoint.description);
+        byId('example-select').replaceChildren(
+          ...endpoint.examples.map((example, i) => {
+            const option = document.createElement('option');
+            option.value = String(i);
+            option.textContent = example.label;
+            return option;
+          }),
+        );
+        byId('example-select').value = '0';
+        loadExample(index, 0);
+        renderCatalog();
+      }
+
+      function loadExample(index, exampleIndex) {
+        const endpoint = apiCatalog[index];
+        const example = endpoint.examples[exampleIndex];
+        byId('method').value = endpoint.method;
+        byId('path').value = endpoint.path;
+        byId('path-params').value = JSON.stringify(example.params, null, 2);
+        byId('query').value = JSON.stringify(example.query, null, 2);
+        byId('body-type').value = example.bodyType;
+        const body = { ...example.body };
+        if (endpoint.path === '/api/auth/refresh')
+          body.refresh_token = refreshToken;
+        byId('body').value = JSON.stringify(body, null, 2);
+        byId('file').value = '';
+        byId('file-field').value = 'file';
+        show('endpoint-example', {
+          method: endpoint.method,
+          path: endpoint.path,
+          ...example,
+        });
+        show(
+          'request-help',
+          `${endpoint.title} · ${endpoint.auth}。${endpoint.method === 'POST' ? '此请求可能修改数据或调用外部服务，请核对参数后发送。' : ''}`,
+        );
+        show('request-summary', '示例已载入，可编辑后发送');
+        show('response-output', '尚未发送此请求');
+      }
+
+      function parseObject(id, label) {
+        let value;
+        try {
+          value = JSON.parse(byId(id).value || '{}');
+        } catch (error) {
+          throw new Error(`${label}不是有效 JSON`);
+        }
+        if (!value || typeof value !== 'object' || Array.isArray(value))
+          throw new Error(`${label}必须是 JSON 对象`);
+        return value;
+      }
+
+      function requestPath() {
+        const params = parseObject('path-params', '路径参数');
+        const query = parseObject('query', '查询参数');
+        const raw = byId('path').value.replace(
+          /:([a-z_][a-z0-9_]*)/gi,
+          (_, name) => {
+            const value = params[name];
+            if (
+              value === undefined ||
+              value === null ||
+              String(value).trim() === ''
+            )
+              throw new Error(`请填写路径参数 ${name}`);
+            return encodeURIComponent(String(value));
+          },
+        );
+        const url = new URL(sameOriginPath(raw), location.origin);
+        Object.entries(query).forEach(([key, value]) => {
+          if (value === null || value === '') return;
+          if (typeof value === 'object')
+            throw new Error(`查询参数 ${key} 应为字符串、数字或布尔值`);
+          url.searchParams.set(key, String(value));
+        });
+        return `${url.pathname}${url.search}`;
+      }
 
       function sameOriginPath(value) {
         const path = String(value || '').trim();
@@ -105,7 +287,9 @@
         return Object.fromEntries(
           Object.entries(value).map(([key, item]) => [
             key,
-            /(password|token|secret)/i.test(key) ? '[已隐藏]' : redact(item),
+            /(password|token|secret|smtp_pass|api_key)/i.test(key)
+              ? '[已隐藏]'
+              : redact(item),
           ]),
         );
       }
@@ -116,7 +300,10 @@
       }
 
       async function callApi(path, options = {}) {
-        const response = await fetch(sameOriginPath(path), options);
+        const response = await fetch(sameOriginPath(path), {
+          ...options,
+          redirect: 'error',
+        });
         const text = await response.text();
         let body = text;
         try {
@@ -164,6 +351,7 @@
             throw new Error(result.body?.message || `HTTP ${result.status}`);
           }
           accessToken = result.body.data?.access_token || '';
+          refreshToken = result.body.data?.refresh_token || '';
           byId('password').value = '';
           byId('login-status').textContent = accessToken
             ? '登录成功'
@@ -171,6 +359,7 @@
           byId('login-status').className = accessToken ? 'ok' : 'bad';
         } catch (error) {
           accessToken = '';
+          refreshToken = '';
           byId('login-status').textContent = error.message;
           byId('login-status').className = 'bad';
         }
@@ -178,6 +367,7 @@
 
       byId('request-form').addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (sending) return;
         const method = byId('method').value;
         const bodyType = byId('body-type').value;
         const file = byId('file').files[0];
@@ -186,7 +376,7 @@
           : {};
         const options = { method, headers };
         try {
-          const path = sameOriginPath(byId('path').value);
+          const path = requestPath();
           if (method !== 'GET' && bodyType === 'json') {
             options.headers['Content-Type'] = 'application/json';
             options.body = JSON.stringify(
@@ -218,16 +408,58 @@
             file: file ? file.name : null,
             authenticated: Boolean(accessToken),
           });
+          sending = true;
+          byId('send-request').disabled = true;
+          show('response-output', '请求中…');
+          const started = performance.now();
           const result = await callApi(path, options);
+          if (
+            ['/api/auth/login', '/api/login', '/api/auth/refresh'].includes(
+              path,
+            ) &&
+            result.body?.code === 0
+          ) {
+            accessToken = result.body.data?.access_token || accessToken;
+            refreshToken = result.body.data?.refresh_token || refreshToken;
+            byId('body').value = '{}';
+            show(
+              'login-status',
+              accessToken ? '登录成功（临时令牌已更新）' : '响应中没有访问令牌',
+            );
+          }
           show('response-output', {
+            duration_ms: Math.round(performance.now() - started),
             http_status: result.status,
             body: redact(result.body),
           });
         } catch (error) {
           show('response-output', { error: error.message });
+        } finally {
+          sending = false;
+          byId('send-request').disabled = false;
         }
       });
 
+      for (const group of new Set(
+        apiCatalog.map((endpoint) => endpoint.group),
+      )) {
+        const option = document.createElement('option');
+        option.value = group;
+        option.textContent = group;
+        byId('api-group').append(option);
+      }
+      byId('api-search').addEventListener('input', renderCatalog);
+      byId('api-group').addEventListener('change', renderCatalog);
+      byId('example-select').addEventListener('change', () =>
+        loadExample(selectedEndpoint, Number(byId('example-select').value)),
+      );
+      byId('load-example').addEventListener('click', () => {
+        loadExample(selectedEndpoint, Number(byId('example-select').value));
+        byId('request-form').scrollIntoView({ behavior: 'smooth' });
+      });
+      selectEndpoint(
+        apiCatalog.findIndex((endpoint) => endpoint.path === '/api/auth/me'),
+      );
       loadHealth();
     </script>
   </body>
