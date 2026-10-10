@@ -25,8 +25,9 @@ export class UserService {
   }
 
   async listUsers(filters = {}) {
-    const conditions = ['is_deleted = 0'];
-    const values = [];
+    const { page = 1, pageSize = 20 } = filters;
+    const conditions = ['is_deleted = ?'];
+    const values = [filters.deleted ? 1 : 0];
 
     if (filters.id) {
       conditions.push('id = ?');
@@ -38,18 +39,19 @@ export class UserService {
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const [rows] = await this.dbPool.query(
-      `SELECT id, username, role, is_deleted, created_at, updated_at FROM users ${where} ORDER BY id DESC`,
+    const [countRows] = await this.dbPool.query(
+      `SELECT COUNT(*) AS total FROM users ${where}`,
       values,
     );
-    return rows;
+    const [rows] = await this.dbPool.query(
+      `SELECT id, username, role, is_deleted, created_at, updated_at FROM users ${where} ORDER BY id DESC LIMIT ? OFFSET ?`,
+      [...values, pageSize, (page - 1) * pageSize],
+    );
+    return { list: rows, total: Number(countRows[0].total), page, pageSize };
   }
 
-  async listDeletedUsers() {
-    const [rows] = await this.dbPool.query(
-      'SELECT id, username, role, is_deleted, created_at, updated_at FROM users WHERE is_deleted = 1 ORDER BY id DESC',
-    );
-    return rows;
+  async listDeletedUsers(options = {}) {
+    return this.listUsers({ ...options, deleted: true });
   }
 
   async attachSiteRelations(users) {

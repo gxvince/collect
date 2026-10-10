@@ -46,6 +46,15 @@ export class UserController {
 
   @Get('list')
   async list() {
+    return this.listUserPage();
+  }
+
+  @Get('deleted')
+  async listDeleted() {
+    return this.listUserPage(true);
+  }
+
+  async listUserPage(deleted = false) {
     const { user, error } = await this.getAuthUser();
     if (error) {
       return { code: error.code, data: null, message: error.message };
@@ -55,33 +64,53 @@ export class UserController {
     }
 
     const query = this.request.query || {};
+    const pageRaw = query.page === undefined ? '1' : query.page;
+    const sizeRaw = query.page_size === undefined ? '20' : query.page_size;
+    const page = Number(pageRaw);
+    const requestedSize = Number(sizeRaw);
+    if (
+      ![pageRaw, sizeRaw].every(
+        (value) =>
+          ['string', 'number'].includes(typeof value) &&
+          /^\d+$/.test(String(value)),
+      ) ||
+      !Number.isSafeInteger(page) ||
+      page < 1 ||
+      !Number.isSafeInteger(requestedSize) ||
+      requestedSize < 1
+    ) {
+      return { code: 422, data: null, message: 'page、page_size 必须为正整数' };
+    }
+    const pageSize = Math.min(100, requestedSize);
+    if (!Number.isSafeInteger((page - 1) * pageSize)) {
+      return { code: 422, data: null, message: '分页范围过大' };
+    }
     const idRaw = query.id ? Number(query.id) : 0;
     const username = query.username ? String(query.username).trim() : '';
     if (query.id && (!Number.isFinite(idRaw) || idRaw <= 0)) {
       return { code: 422, data: null, message: '参数错误' };
     }
 
-    const users = await this.userService.listUsers({
+    const options = {
       id: idRaw > 0 ? idRaw : undefined,
       username: username || undefined,
-    });
-    const usersWithSites = await this.userService.attachSiteRelations(users);
-    return { code: 0, data: usersWithSites, message: '获取成功' };
-  }
-
-  @Get('deleted')
-  async listDeleted() {
-    const { user, error } = await this.getAuthUser();
-    if (error) {
-      return { code: error.code, data: null, message: error.message };
-    }
-    if (user.role !== 'admin') {
-      return { code: 403, data: null, message: '无权限' };
-    }
-
-    const users = await this.userService.listDeletedUsers();
-    const usersWithSites = await this.userService.attachSiteRelations(users);
-    return { code: 0, data: usersWithSites, message: '获取成功' };
+      page,
+      pageSize,
+    };
+    const result = deleted
+      ? await this.userService.listDeletedUsers(options)
+      : await this.userService.listUsers(options);
+    const list = await this.userService.attachSiteRelations(result.list);
+    return {
+      code: 0,
+      data: {
+        list,
+        page: result.page,
+        page_size: result.pageSize,
+        total: result.total,
+      },
+      message: '获取成功',
+    };
   }
 
   @Post('add')

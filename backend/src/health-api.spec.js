@@ -150,6 +150,24 @@ it('载入不发送，路径和查询正确编码', async () => {
     '/api/proxy/elementor_data/12%2F34?site_id=%E6%B5%8B%E8%AF%95+%26+%E7%AB%99%E7%82%B9',
   );
 });
+it.each(['/api/user/list', '/api/user/deleted'])(
+  '%s 调试示例展示分页说明并发送编辑后的分页参数',
+  async (route) => {
+    const p = await page();
+    p.run(`selectEndpoint(apiCatalog.findIndex(e => e.path === '${route}'))`);
+    expect(JSON.parse(p.elements.get('query').value)).toEqual({
+      username: '',
+      page: 1,
+      page_size: 20,
+    });
+    const description = p.elements.get('endpoint-description').textContent;
+    expect(description).toContain('data: { list, total, page, page_size }');
+    expect(description).toContain('code=422');
+    p.elements.get('query').value = JSON.stringify({ page: 2, page_size: 50 });
+    await p.submit();
+    expect(p.fetch.mock.calls.at(-1)[0]).toBe(`${route}?page=2&page_size=50`);
+  },
+);
 it('可编辑 JSON，登录后自动携带令牌并显示耗时', async () => {
   const p = await page();
   p.fetch.mockResolvedValueOnce({
