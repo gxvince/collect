@@ -1,6 +1,107 @@
 import { ProxyController } from './proxy.controller';
 
 describe('ProxyController', () => {
+  describe('内容创建开关', () => {
+    let originalEnabled;
+
+    beforeEach(() => {
+      originalEnabled = process.env.PROXY_CONTENT_CREATE_ENABLED;
+      delete process.env.PROXY_CONTENT_CREATE_ENABLED;
+    });
+
+    afterEach(() => {
+      if (originalEnabled === undefined) {
+        delete process.env.PROXY_CONTENT_CREATE_ENABLED;
+      } else {
+        process.env.PROXY_CONTENT_CREATE_ENABLED = originalEnabled;
+      }
+    });
+
+    function createController(role = 'admin') {
+      return new ProxyController(
+        {
+          headers: { authorization: 'Bearer token' },
+          body: { site_id: 'site_demo', post_type: 'post', title: '测试' },
+        },
+        {
+          verifyAccessToken: jest.fn().mockResolvedValue({ user_id: 1 }),
+          findUserById: jest.fn().mockResolvedValue({ id: 1, role }),
+          hasUserDisabledSites: jest.fn().mockResolvedValue(false),
+          getUserSiteIds: jest.fn().mockResolvedValue([]),
+        },
+        {
+          findById: jest.fn().mockResolvedValue({
+            wp_base_url: 'https://example.com',
+            wp_auth_token: 'token',
+          }),
+        },
+        {
+          requestJson: jest.fn().mockResolvedValue({
+            ok: true,
+            data: { data: { id: 123 } },
+          }),
+        },
+      );
+    }
+
+    it.each([undefined, 'false', '', '1', 'TRUE'])(
+      '配置为 %s 时禁用，且不查询数据库或调用 WordPress',
+      async (value) => {
+        if (value !== undefined) {
+          process.env.PROXY_CONTENT_CREATE_ENABLED = value;
+        }
+        const controller = createController();
+        await expect(controller.createContent()).resolves.toEqual({
+          code: 503,
+          data: null,
+          message: '内容创建接口暂时禁用',
+        });
+        expect(controller.authService.verifyAccessToken).not.toHaveBeenCalled();
+        expect(controller.siteService.findById).not.toHaveBeenCalled();
+        expect(controller.wpClientService.requestJson).not.toHaveBeenCalled();
+      },
+    );
+
+    it('显式开启后恢复创建，转发时去除 site_id', async () => {
+      process.env.PROXY_CONTENT_CREATE_ENABLED = 'true';
+      const controller = createController();
+      await expect(controller.createContent()).resolves.toEqual({
+        code: 0,
+        data: { id: 123 },
+        message: '创建成功',
+      });
+      expect(controller.wpClientService.requestJson).toHaveBeenCalledWith(
+        expect.objectContaining({ wp_base_url: 'https://example.com' }),
+        '/content_create',
+        { method: 'POST', body: { post_type: 'post', title: '测试' } },
+      );
+    });
+
+    it('开启后仍要求登录', async () => {
+      process.env.PROXY_CONTENT_CREATE_ENABLED = 'true';
+      const controller = createController();
+      controller.request.headers = {};
+      await expect(controller.createContent()).resolves.toEqual({
+        code: 401,
+        data: null,
+        message: '未登录',
+      });
+      expect(controller.wpClientService.requestJson).not.toHaveBeenCalled();
+    });
+
+    it('开启后仍拦截无站点权限的用户', async () => {
+      process.env.PROXY_CONTENT_CREATE_ENABLED = 'true';
+      const controller = createController('user');
+      await expect(controller.createContent()).resolves.toEqual({
+        code: 403,
+        data: null,
+        message: '无权限',
+      });
+      expect(controller.siteService.findById).not.toHaveBeenCalled();
+      expect(controller.wpClientService.requestJson).not.toHaveBeenCalled();
+    });
+  });
+
   it('缺少 Bearer token 时返回 401', async () => {
     const controller = new ProxyController(
       { headers: {}, query: { site_id: 'site_demo' } },

@@ -133,6 +133,7 @@
 - `GET /api/page_config/get`：query `site_id`, `page_id`
 
 ### 5.4 WordPress 代理
+- `POST /api/proxy/content_create`：内容创建接口默认关闭；仅当环境变量 `PROXY_CONTENT_CREATE_ENABLED=true` 时开启。关闭时返回 `{ code: 503, data: null, message: '内容创建接口暂时禁用' }`，不向 WordPress 转发；修改配置后需重启后端。
 - `GET /api/proxy/get_pages`：query `site_id`
 - `GET /api/proxy/elementor_data/:id`：query `site_id`
 - `POST /api/proxy/update_elementor_data`：body `{ site_id, id, data }`
@@ -265,6 +266,7 @@
 - `/health/view` 提供健康状态、登录与通用请求器，可调试 JSON、FormData 和文件接口。
 
 ## 17. 变更记录
+- 2026-10-27：按临时禁用内容创建接口的需求，新增 `PROXY_CONTENT_CREATE_ENABLED` 开关，默认关闭；影响：仅内容创建接口返回业务码 503，显式设置 true 并重启后恢复原有鉴权与创建流程；无需数据库迁移。
 - 2026-10-10：合并 AGENT.md 与 AGENTS.md，统一由 AGENTS.md 保存项目需求及生产数据库变更告知规则；影响：后续开发只需读取本文件，无需数据库迁移。
 - 2026-09-17：扩展 `/health/view` 为完整后端接口目录与在线调试页，新增示例覆盖校验；影响：前端可直接查阅并测试接口，业务接口及 WordPress 插件不变。
 - 初始版本：由项目负责人确认后生效。

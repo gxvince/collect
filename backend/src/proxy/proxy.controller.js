@@ -1727,6 +1727,10 @@ export class ProxyController {
 
   @Post('content_create')
   async createContent() {
+    if (process.env.PROXY_CONTENT_CREATE_ENABLED !== 'true') {
+      return { code: 503, data: null, message: '内容创建接口暂时禁用' };
+    }
+
     const { user, error } = await this.getAuthUser();
     if (error) {
       return { code: error.code, data: null, message: error.message };

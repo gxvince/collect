@@ -499,7 +499,7 @@ export const apiCatalog = [
     'content_create',
     '创建内容',
     { post_type: 'post', title: '示例内容', content: '<p>示例正文</p>' },
-    'site_id、post_type、title 必填；content、excerpt、post_date、category_ids、tag_ids、featured_image_id、gallery_ids 可选；当前插件创建后直接发布，不支持草稿参数；先用 post_types 获取支持类型。',
+    '默认禁用，返回 code=503；设置 PROXY_CONTENT_CREATE_ENABLED=true 并重启后端后开启。site_id、post_type、title 必填；content、excerpt、post_date、category_ids、tag_ids、featured_image_id、gallery_ids 可选；当前插件创建后直接发布，不支持草稿参数；先用 post_types 获取支持类型。',
   ),
   post(
     '翻译',
